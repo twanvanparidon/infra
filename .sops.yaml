@@ -1,0 +1,9 @@
+# Every *.sops.<ext> file is encrypted for both keys:
+#   personal: ~/.config/sops/age/keys.txt
+#   ci:       the SOPS_AGE_KEY repo secret
+# After changing a key, run `task sops:updatekeys`.
+creation_rules:
+  - path_regex: \.sops\.(ya?ml|json|env|tfvars)$
+    age: >-
+      age1caqntnth0svkcaz5ktaq0es4lymev35586p8sznmnk0yau2djyfquz928v,
+      age19uf9fmlgtc8y4hajqhm7fdje9fq8sdyqpqdv2jf9vpl4rnfqmsgqhy33nl
