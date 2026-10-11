@@ -1,0 +1,93 @@
+# Plan every tofu stack a pull request changes and post the plan as a PR comment.
+# Each step is a task in .taskfiles/tofu; locally: `task tofu:plan STACK=<name>`.
+
+name: tofu
+
+on:
+  pull_request:
+    paths:
+      - "tofu/**"
+      - "secrets/tofu.sops.yaml"
+      - ".taskfiles/tofu/Taskfile.yml"
+      - ".github/workflows/tofu.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tofu-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Every job runs as the hosted runner's user (owns the workspace) instead of root.
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
+      options: --user 1001:1001
+    outputs:
+      stacks: ${{ steps.changed.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: changed
+        run: echo "stacks=$(task tofu:changed BASE=origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+
+  plan:
+    needs: changes
+    if: needs.changes.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
+      options: --user 1001:1001
+    permissions:
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ fromJSON(needs.changes.outputs.stacks) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Keep the output for the comment, then fail the step if the plan failed.
+      - id: plan
+        run: |
+          task tofu:plan STACK=${{ matrix.stack }} > plan.txt 2>&1
+          rc=$?
+          cat plan.txt
+          exit $rc
+        shell: sh {0}
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          TF_CLI_ARGS: -no-color
+      # One comment per stack, updated on every push.
+      - if: always() && steps.plan.outcome != 'skipped'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          STACK: ${{ matrix.stack }}
+          OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const { STACK, OUTCOME } = process.env;
+            const marker = `<!-- tofu-plan:${STACK} -->`;
+            let plan = fs.readFileSync('plan.txt', 'utf8');
+            if (plan.length > 60000) plan = '...\n' + plan.slice(-60000);
+            const body = [
+              marker,
+              `### \`tofu plan\` for \`${STACK}\`: ${OUTCOME}`,
+              `Commit ${context.payload.pull_request.head.sha.slice(0, 7)}`,
+              '```',
+              plan,
+              '```',
+            ].join('\n');
+            const issue = { owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number };
+            const comments = await github.paginate(github.rest.issues.listComments, issue);
+            const old = comments.find((c) => c.body.startsWith(marker));
+            if (old) {
+              await github.rest.issues.updateComment({ ...issue, comment_id: old.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...issue, body });
+            }

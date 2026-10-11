@@ -3,6 +3,8 @@
 # TF_ENCRYPTION; the stack code holds the method and enforces it.
 version: "3"
 
+silent: true
+
 vars:
   SECRET: secrets/tofu.sops.yaml
 
@@ -23,6 +25,27 @@ tasks:
       vars: [STACK]
     env: *encryption
     cmds:
-      - task: init
-        vars: { STACK: "{{.STACK}}" }
+      # Only errors from init; the output is the plan.
+      - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
       - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false
+
+  changed:
+    desc: Print the stacks changed since BASE (default origin/main) as a JSON list
+    vars:
+      BASE: '{{.BASE | default "origin/main"}}'
+    cmds:
+      - |
+        files="$(git diff --name-only "{{.BASE}}...HEAD")"
+        # Shared code and the passphrase affect every stack.
+        if printf '%s\n' "$files" | grep -qE '^(tofu/modules/|secrets/tofu\.sops\.yaml$|\.taskfiles/tofu/Taskfile\.yml$|\.github/workflows/tofu\.yml$)'; then
+          stacks="$(ls tofu/stacks)"
+        else
+          stacks="$(printf '%s\n' "$files" | sed -n 's|^tofu/stacks/\([^/]*\)/.*|\1|p' | sort -u)"
+        fi
+        out=""
+        for s in $stacks; do
+          # Skip stacks the change deleted.
+          ls tofu/stacks/"$s"/*.tf > /dev/null 2>&1 || continue
+          out="$out${out:+,}\"$s\""
+        done
+        echo "[$out]"
