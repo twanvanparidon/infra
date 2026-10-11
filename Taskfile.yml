@@ -39,6 +39,13 @@ tasks:
       - '{{.RUN}} "Validating Packer" task packer:lint:validate'
       - '{{.RUN}} "Running ansible-lint" task ansible:lint'
       - '{{.RUN}} "Decrypting secrets" task sops:check'
+      - '{{.RUN}} "Scanning for leaked secrets" task leaks'
+
+  leaks:
+    desc: Scan the working tree and git history for plaintext secrets.
+    cmds:
+      - gitleaks git --no-banner --redact .
+      - gitleaks dir --no-banner --redact .
 
   tools:
     desc: Print the version of every pinned tool.
@@ -50,6 +57,7 @@ tasks:
       - ansible-lint --version | head -1
       - sops --version | head -1
       - age --version
+      - gitleaks version
       - task --version
       - gum --version
       - yq --version
