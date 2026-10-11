@@ -50,6 +50,24 @@ tasks:
         echo "subnet router for {{.ROUTE}}: online=$online accepted=$accepted"
         [ "$online" = "true" ] && [ "$accepted" = "true" ]
 
+  ping:
+    desc: Ping the subnet router for ROUTE through the tunnel; prints only the verdict, never addresses.
+    vars:
+      ROUTE: '{{.ROUTE | default "10.0.10.0/24"}}'
+    cmds:
+      - |
+        gw="$({{.TS}} status --json | jq -r --arg r "{{.ROUTE}}" '[.Peer[] | select((.PrimaryRoutes // []) | index($r)) | .TailscaleIPs[0]][0] // empty')"
+        [ -n "$gw" ] || { echo "no subnet router for {{.ROUTE}}"; exit 1; }
+        for mode in disco tsmp; do
+          flag=""; [ "$mode" = tsmp ] && flag="--tsmp"
+          out="$({{.TS}} ping $flag -c 5 --timeout 5s "$gw" 2>&1 || true)"
+          case "$out" in
+            *"via DERP"*) echo "$mode ping: pong via DERP" ;;
+            *pong*) echo "$mode ping: pong" ;;
+            *) echo "$mode ping: no pong" ;;
+          esac
+        done
+
   down:
     desc: Leave the tailnet; the ephemeral node is removed right away.
     cmds:
