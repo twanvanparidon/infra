@@ -52,7 +52,7 @@ OpenTofu talks to Proxmox with two API tokens, both privilege separated:
 
 VMs that are not in the `tofu` pool are out of reach for CI.
 
-CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node, without root, and serves an HTTP proxy on `localhost:1055`. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds that part of the policy. The `tailnet` workflow checks the connection.
+CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node and routes `10.0.10.0/24` through `tailscale0`. Jobs that use it run their container as root with `--cap-add=NET_ADMIN --device=/dev/net/tun`; userspace mode does not work, because its proxy dials subnet routes outside the tunnel. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds that part of the policy. The `tailnet` workflow checks the connection.
 
 | Environment | Branches | Secrets |
 |---|---|---|

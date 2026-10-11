@@ -32,16 +32,8 @@ jobs:
           TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - run: task tailscale:route
       - run: task tailscale:ping
-      # The bytes sent to the subnet router show whether the TCP connection used
-      # the tunnel at all.
-      - run: |
-          tx() { /tmp/tailscale/tailscale --socket=/tmp/tailscale/tailscaled.sock status --json \
-            | jq '[.Peer[] | select((.PrimaryRoutes // []) | index("10.0.10.0/24")) | .TxBytes][0]'; }
-          before="$(tx)"
-          if nc -z -w 20 10.0.10.2 8006; then echo "TCP to the API: open"; else echo "TCP to the API: no answer"; fi
-          echo "bytes sent to the subnet router: $(( $(tx) - before ))"
       # Unauthenticated, the API answers 401: that proves it is reachable.
-      # wget only names localhost and 10.0.10.2, so its error is safe to print.
+      # wget only names 10.0.10.2, so its error is safe to print.
       - run: |
           out="$(wget -T 20 --no-check-certificate -O /dev/null https://10.0.10.2:8006/api2/json/version 2>&1 || true)"
           case "$out" in
