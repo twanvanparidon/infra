@@ -9,6 +9,7 @@ on:
     paths:
       - "tofu/**"
       - "secrets/tofu.sops.yaml"
+      - "secrets/proxmox.sops.yaml"
       - ".taskfiles/tofu/Taskfile.yml"
       - ".github/workflows/tofu.yml"
   push:
@@ -16,6 +17,7 @@ on:
     paths:
       - "tofu/**"
       - "secrets/tofu.sops.yaml"
+      - "secrets/proxmox.sops.yaml"
       - ".taskfiles/tofu/Taskfile.yml"
       - ".github/workflows/tofu.yml"
 

@@ -1,12 +1,17 @@
 # Run OpenTofu on one stack under tofu/stacks (STACK=name).
 # Every task decrypts the state passphrase from secrets/tofu.sops.yaml into
-# TF_ENCRYPTION; the stack code holds the method and enforces it.
+# TF_ENCRYPTION; the stack code holds the method and enforces it. The Proxmox
+# token is PROXMOX_VE_API_TOKEN when set (CI apply), else the read-only dev
+# token from secrets/proxmox.sops.yaml.
+# A stack with a .ci-skip file (its content says why) is left out of
+# tofu:stacks and tofu:changed, so CI does not plan, apply or check it.
 version: "3"
 
 silent: true
 
 vars:
   SECRET: secrets/tofu.sops.yaml
+  PROXMOX_SECRET: secrets/proxmox.sops.yaml
 
 tasks:
   init:
@@ -16,6 +21,8 @@ tasks:
     env: &encryption
       TF_ENCRYPTION:
         sh: printf 'key_provider "pbkdf2" "main" { passphrase = "%s" }' "$(sops decrypt --extract '["passphrase"]' {{.SECRET}})"
+      PROXMOX_VE_API_TOKEN:
+        sh: printf '%s' "${PROXMOX_VE_API_TOKEN:-$(sops decrypt --extract '["api_token"]' {{.PROXMOX_SECRET}})}"
     cmds:
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false
 
@@ -46,6 +53,7 @@ tasks:
         for d in tofu/stacks/*/; do
           s="$(basename "$d")"
           ls "$d"*.tf > /dev/null 2>&1 || continue
+          if [ -f "$d.ci-skip" ]; then echo "skip $s: $(cat "$d.ci-skip")" >&2; continue; fi
           out="$out${out:+,}\"$s\""
         done
         echo "[$out]"
@@ -57,8 +65,8 @@ tasks:
     cmds:
       - |
         files="$(git diff --name-only "{{.BASE}}...HEAD")"
-        # Shared code and the passphrase affect every stack.
-        if printf '%s\n' "$files" | grep -qE '^(tofu/modules/|secrets/tofu\.sops\.yaml$|\.taskfiles/tofu/Taskfile\.yml$|\.github/workflows/tofu\.yml$)'; then
+        # Shared code and secrets affect every stack.
+        if printf '%s\n' "$files" | grep -qE '^(tofu/modules/|tofu/shared/|secrets/(tofu|proxmox)\.sops\.yaml$|\.taskfiles/tofu/Taskfile\.yml$|\.github/workflows/tofu\.yml$)'; then
           stacks="$(ls tofu/stacks)"
         else
           # State commits from CI are not changes to apply.
@@ -68,6 +76,7 @@ tasks:
         for s in $stacks; do
           # Skip stacks the change deleted.
           ls tofu/stacks/"$s"/*.tf > /dev/null 2>&1 || continue
+          if [ -f "tofu/stacks/$s/.ci-skip" ]; then echo "skip $s: $(cat "tofu/stacks/$s/.ci-skip")" >&2; continue; fi
           out="$out${out:+,}\"$s\""
         done
         echo "[$out]"
