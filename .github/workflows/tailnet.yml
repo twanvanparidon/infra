@@ -21,7 +21,8 @@ jobs:
     environment: proxmox-plan
     container:
       image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
-      options: --user 1001:1001
+      # Root, NET_ADMIN and the TUN device let tailscaled create tailscale0.
+      options: --user 0:0 --cap-add=NET_ADMIN --device=/dev/net/tun
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,15 +32,14 @@ jobs:
           TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - run: task tailscale:route
       - run: task tailscale:ping
-      # The proxy answers 200 once its TCP connection to the API is up. The
-      # bytes sent to the subnet router show whether it used the tunnel at all.
+      # The bytes sent to the subnet router show whether the TCP connection used
+      # the tunnel at all.
       - run: |
           tx() { /tmp/tailscale/tailscale --socket=/tmp/tailscale/tailscaled.sock status --json \
             | jq '[.Peer[] | select((.PrimaryRoutes // []) | index("10.0.10.0/24")) | .TxBytes][0]'; }
           before="$(tx)"
-          printf 'CONNECT 10.0.10.2:8006 HTTP/1.1\r\nHost: 10.0.10.2:8006\r\n\r\n' \
-            | nc -w 20 localhost 1055 | head -1 || true
-          echo "bytes sent to the subnet router during CONNECT: $(( $(tx) - before ))"
+          if nc -z -w 20 10.0.10.2 8006; then echo "TCP to the API: open"; else echo "TCP to the API: no answer"; fi
+          echo "bytes sent to the subnet router: $(( $(tx) - before ))"
       # Unauthenticated, the API answers 401: that proves it is reachable.
       # wget only names localhost and 10.0.10.2, so its error is safe to print.
       - run: |
@@ -48,7 +48,5 @@ jobs:
             *" 401 "*) echo "Proxmox API reachable" ;;
             *) echo "Proxmox API not reachable: $out" >&2; exit 1 ;;
           esac
-        env:
-          https_proxy: http://localhost:1055
       - if: always()
         run: task tailscale:down

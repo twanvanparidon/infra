@@ -1,6 +1,7 @@
-# Join the tailnet from a CI job without root: tailscaled runs with userspace
-# networking and serves an HTTP proxy on localhost:1055; set
-# HTTPS_PROXY=http://localhost:1055 to reach Proxmox through it.
+# Join the tailnet from a CI job container. tailscaled runs in kernel mode and
+# creates tailscale0 with a route for the subnet, so the job reaches Proxmox
+# directly. The container needs root, NET_ADMIN and /dev/net/tun. Userspace
+# mode does not work here: its proxy dials subnet routes outside the tunnel.
 # All Tailscale output goes to /dev/null: tailscaled logs peer endpoints, which
 # include the home IP, and workflow logs are public.
 version: '3'
@@ -26,12 +27,12 @@ tasks:
         wget -q -O {{.DIR}}/tailscale.tgz https://pkgs.tailscale.com/stable/tailscale_{{.VERSION}}_amd64.tgz
         echo "{{.SHA256}}  {{.DIR}}/tailscale.tgz" | sha256sum -c -s
         tar -xzf {{.DIR}}/tailscale.tgz -C {{.DIR}} --strip-components=1
-        nohup {{.DIR}}/tailscaled --tun=userspace-networking --state=mem: \
-          --socket={{.DIR}}/tailscaled.sock --outbound-http-proxy-listen=localhost:1055 \
+        nohup {{.DIR}}/tailscaled --state=mem: --socket={{.DIR}}/tailscaled.sock \
           --no-logs-no-support > /dev/null 2>&1 &
         sleep 2
         if ! {{.TS}} up --client-secret="$TS_CLIENT_SECRET?preauthorized=true" \
-          --advertise-tags=tag:ci --accept-routes --hostname="ci-${GITHUB_RUN_ID:-local}" \
+          --advertise-tags=tag:ci --accept-routes --accept-dns=false --netfilter-mode=off \
+          --hostname="ci-${GITHUB_RUN_ID:-local}" \
           --timeout=60s > /dev/null 2>&1; then
           echo "tailscale up failed; output is hidden because it can contain the home IP" >&2
           exit 1
