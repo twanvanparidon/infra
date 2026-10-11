@@ -15,7 +15,12 @@ Only CI applies changes.
 devbox shell
 task lint    # what CI runs: fmt, tflint, validate, ansible-lint, sops and gitleaks
 task         # menu of every task
+task tofu:plan STACK=test   # plan one stack under tofu/stacks
 ```
+
+## State
+
+Each stack under `tofu/stacks/` keeps its state in `terraform.tfstate` next to the code, committed to the repo. OpenTofu encrypts state and plan files with a passphrase from `secrets/tofu.sops.yaml`; the `tofu` tasks pass it in through `TF_ENCRYPTION`, and without it `tofu plan` fails.
 
 ## Layout
 
@@ -25,7 +30,7 @@ task         # menu of every task
 | `packer/` | Golden image templates |
 | `ansible/` | Playbooks and roles |
 | `secrets/` | SOPS encrypted files |
-| `.taskfiles/` | Task includes: `sops` and the lint pipelines from [ci-runner](https://github.com/twanvanparidon/ci-runner) |
+| `.taskfiles/` | Task includes: `sops`, `tofu` (init and plan a stack) and the lint pipelines from [ci-runner](https://github.com/twanvanparidon/ci-runner) |
 | `.github/workflows/` | CI, every step is a `task` in a ci-runner image |
 
 ## Secrets

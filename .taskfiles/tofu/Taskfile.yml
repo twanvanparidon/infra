@@ -1,0 +1,28 @@
+# Run OpenTofu on one stack under tofu/stacks (STACK=name).
+# Every task decrypts the state passphrase from secrets/tofu.sops.yaml into
+# TF_ENCRYPTION; the stack code holds the method and enforces it.
+version: "3"
+
+vars:
+  SECRET: secrets/tofu.sops.yaml
+
+tasks:
+  init:
+    desc: tofu init a stack (STACK=name)
+    requires:
+      vars: [STACK]
+    env: &encryption
+      TF_ENCRYPTION:
+        sh: printf 'key_provider "pbkdf2" "main" { passphrase = "%s" }' "$(sops decrypt --extract '["passphrase"]' {{.SECRET}})"
+    cmds:
+      - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false
+
+  plan:
+    desc: tofu plan a stack (STACK=name)
+    requires:
+      vars: [STACK]
+    env: *encryption
+    cmds:
+      - task: init
+        vars: { STACK: "{{.STACK}}" }
+      - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false
