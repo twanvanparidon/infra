@@ -37,6 +37,19 @@ The daily `drift` workflow, also started by hand from the Actions tab, plans eve
 | `.taskfiles/` | Task includes: `sops`, `tofu` (init and plan a stack) and the lint pipelines from [ci-runner](https://github.com/twanvanparidon/ci-runner) |
 | `.github/workflows/` | CI, every step is a `task` in a ci-runner image |
 
+## Proxmox access
+
+OpenTofu talks to Proxmox with two API tokens, both privilege separated:
+
+| Token | Rights | Where |
+|---|---|---|
+| `tofu-dev@pve!dev` | `PVEAuditor` on `/` (read-only) | `secrets/proxmox.sops.yaml` |
+| `tofu-ci@pve!ci` | VMs in the `tofu` pool, `local-lvm`, the node's bridges | The `proxmox-apply` environment secret, nowhere else |
+
+`task pve:access` creates the pool, users, tokens and ACLs with Ansible over SSH as `root`; run `ssh-copy-id root@10.0.10.2` once first. Re-running changes nothing. A token's secret is shown only when it is created: the dev token goes into sops, the CI token is printed once. To rotate one, remove it with `pveum user token remove <user> <token>` on the host and run the task again.
+
+VMs that are not in the `tofu` pool are out of reach for CI.
+
 ## Secrets
 
 Secrets are files named `*.sops.<ext>`, encrypted with [SOPS](https://getsops.io) and [age](https://age-encryption.org) for two keys (see `.sops.yaml`):

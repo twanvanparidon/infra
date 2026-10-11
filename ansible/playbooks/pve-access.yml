@@ -1,0 +1,112 @@
+# Create the Proxmox pool, users, API tokens and ACLs that OpenTofu uses.
+# Run once from a laptop: `task pve:access`. Re-running changes nothing; a new
+# token's secret is shown only when it is created. The dev token goes into
+# secrets/proxmox.sops.yaml; the CI token is printed to store as a GitHub secret.
+# To rotate a token, remove it (`pveum user token remove <user> <token>`) and re-run.
+- name: Set up Proxmox access for OpenTofu
+  hosts: pve
+  vars:
+    pool: tofu
+    storage: local-lvm
+    secret_file: "{{ playbook_dir }}/../../secrets/proxmox.sops.yaml"
+    # Tokens are privilege separated: each gets the same ACLs as its user.
+    users:
+      - id: tofu-dev@pve
+        token: dev
+        comment: Read-only, for plans from a laptop
+        acls:
+          - { path: /, role: PVEAuditor }
+      - id: tofu-ci@pve
+        token: ci
+        comment: Plans and applies from CI
+        acls:
+          # VMs in the pool; PVEPoolAdmin adds new VMs to it.
+          - { path: "/pool/{{ pool }}", role: PVEVMAdmin }
+          - { path: "/pool/{{ pool }}", role: PVEPoolAdmin }
+          - { path: "/storage/{{ storage }}", role: PVEDatastoreUser }
+          # Attach VMs to the node's Linux bridges.
+          - { path: /sdn/zones/localnetwork, role: PVESDNUser }
+          - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: PVEAuditor }
+
+  tasks:
+    - name: Read pools, users and ACLs
+      ansible.builtin.command: pveum {{ item }} list --output-format json
+      loop: [pool, user, acl]
+      register: current
+      changed_when: false
+
+    - name: Keep the current state
+      ansible.builtin.set_fact:
+        pools: "{{ current.results[0].stdout | from_json | map(attribute='poolid') }}"
+        existing_users: "{{ current.results[1].stdout | from_json | map(attribute='userid') }}"
+        acls: "{{ current.results[2].stdout | from_json }}"
+
+    - name: Create the pool
+      ansible.builtin.command: pveum pool add {{ pool }} --comment "Managed by OpenTofu"
+      when: pool not in pools
+      changed_when: true
+
+    - name: Create the users
+      ansible.builtin.command: pveum user add {{ item.id }} --comment "{{ item.comment }}"
+      loop: "{{ users }}"
+      loop_control:
+        label: "{{ item.id }}"
+      when: item.id not in existing_users
+      changed_when: true
+
+    - name: Read the tokens
+      ansible.builtin.command: pveum user token list {{ item.id }} --output-format json
+      loop: "{{ users }}"
+      loop_control:
+        label: "{{ item.id }}"
+      register: tokens
+      changed_when: false
+
+    - name: Create the tokens
+      ansible.builtin.command: >-
+        pveum user token add {{ item.item.id }} {{ item.item.token }}
+        --privsep 1 --comment "{{ item.item.comment }}" --output-format json
+      loop: "{{ tokens.results }}"
+      loop_control:
+        label: "{{ item.item.id }}!{{ item.item.token }}"
+      when: item.item.token not in (item.stdout | from_json | map(attribute='tokenid'))
+      register: created
+      changed_when: true
+      no_log: true
+
+    - name: Grant the ACLs to each user and its token
+      ansible.builtin.command: >-
+        pveum acl modify {{ item.1.path }} --roles {{ item.1.role }}
+        --{{ 'users' if kind == 'user' else 'tokens' }} {{ ugid }}
+      loop: "{{ users | subelements('acls') | product(['user', 'token']) | map('flatten') }}"
+      loop_control:
+        label: "{{ ugid }} {{ item.1.role }} {{ item.1.path }}"
+      vars:
+        kind: "{{ item.2 }}"
+        ugid: "{{ item.0.id if kind == 'user' else item.0.id ~ '!' ~ item.0.token }}"
+      when: >-
+        acls | selectattr('path', 'equalto', item.1.path)
+        | selectattr('roleid', 'equalto', item.1.role)
+        | selectattr('ugid', 'equalto', ugid) | length == 0
+      changed_when: true
+
+    - name: Store the new dev token in sops
+      ansible.builtin.command:
+        cmd: sops set --value-stdin {{ secret_file }} '["api_token"]'
+        stdin: "{{ ('tofu-dev@pve!dev=' ~ (item.stdout | from_json).value) | to_json }}"
+      loop: "{{ created.results | selectattr('changed', 'defined') | selectattr('changed') | selectattr('item.item.token', 'equalto', 'dev') }}"
+      loop_control:
+        label: tofu-dev@pve!dev
+      delegate_to: localhost
+      become: false
+      changed_when: true
+      no_log: true
+
+    - name: Show the new CI token once
+      ansible.builtin.debug:
+        msg:
+          - "tofu-ci@pve!ci={{ (item.stdout | from_json).value }}"
+          - Store it as the PROXMOX_VE_API_TOKEN secret of the proxmox-apply environment; it is not shown again.
+      loop: "{{ created.results | selectattr('changed', 'defined') | selectattr('changed') | selectattr('item.item.token', 'equalto', 'ci') }}"
+      loop_control:
+        label: tofu-ci@pve!ci

@@ -1,0 +1,7 @@
+all:
+  children:
+    pve:
+      hosts:
+        pve-prod:
+          ansible_host: 10.0.10.2
+          ansible_user: root

@@ -1,0 +1,10 @@
+version: '3'
+
+silent: true
+
+tasks:
+  access:
+    desc: Create the Proxmox pool, users, tokens and ACLs for OpenTofu (needs SSH as root).
+    dir: ansible
+    cmds:
+      - ansible-playbook playbooks/pve-access.yml
