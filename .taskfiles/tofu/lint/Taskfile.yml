@@ -1,0 +1,67 @@
+# Lint OpenTofu code: format check, tflint and validate. No plan or apply.
+# Image: ci-runner tofu (tofu, tflint, sops, age).
+# Copy to .taskfiles/tofu/lint/Taskfile.yml, include as `tofu:lint`,
+# run `task tofu:lint` (all) or one step: tofu:lint:fmt, :tflint, :validate.
+# TOFU_DIR (default tofu) holds the code; every step passes while it has no .tf files.
+# tflint reads TOFU_DIR/.tflint.hcl when present. validate runs `init -backend=false` per
+# directory, so it needs no credentials or state.
+# Variables are per task: included Taskfiles share file-level vars.
+version: "3"
+
+tasks:
+  default:
+    desc: Format check, tflint and validate
+    cmds:
+      - task: fmt
+      - task: tflint
+      - task: validate
+
+  fmt:
+    desc: tofu fmt -check on TOFU_DIR
+    vars:
+      TOFU_DIR: '{{.TOFU_DIR | default "tofu"}}'
+    cmds:
+      - |
+        if [ -z "$(find "{{.TOFU_DIR}}" \( -name '*.tf' -o -name '*.tofu' \) -not -path '*/.terraform/*' 2> /dev/null | head -1)" ]; then
+          echo "no .tf files under {{.TOFU_DIR}}, skipping"; exit 0
+        fi
+        tofu fmt -check -diff -recursive "{{.TOFU_DIR}}"
+
+  tflint:
+    desc: tflint on every module under TOFU_DIR, with TOFU_DIR/.tflint.hcl when present
+    vars:
+      TOFU_DIR: '{{.TOFU_DIR | default "tofu"}}'
+    cmds:
+      - |
+        if [ -z "$(find "{{.TOFU_DIR}}" \( -name '*.tf' -o -name '*.tofu' \) -not -path '*/.terraform/*' 2> /dev/null | head -1)" ]; then
+          echo "no .tf files under {{.TOFU_DIR}}, skipping"; exit 0
+        fi
+        cd "{{.TOFU_DIR}}"
+        # --recursive loads the config per module unless it is passed as an absolute path.
+        if [ -f .tflint.hcl ]; then set -- --config "$PWD/.tflint.hcl"; fi
+        tflint --init "$@"
+        tflint --recursive --format compact "$@"
+
+  validate:
+    desc: tofu validate every directory with .tf files under TOFU_DIR
+    vars:
+      TOFU_DIR: '{{.TOFU_DIR | default "tofu"}}'
+    cmds:
+      - |
+        dirs="$(find "{{.TOFU_DIR}}" \( -name '*.tf' -o -name '*.tofu' \) -not -path '*/.terraform/*' -exec dirname {} \; 2> /dev/null | sort -u)"
+        if [ -z "$dirs" ]; then echo "no .tf files under {{.TOFU_DIR}}, skipping"; exit 0; fi
+        # One provider download per version, shared by every directory.
+        export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-${TMPDIR:-/tmp}/tofu-plugins}"
+        mkdir -p "$TF_PLUGIN_CACHE_DIR"
+        failed=0
+        for d in $dirs; do
+          if tofu -chdir="$d" init -backend=false -input=false -no-color > /dev/null \
+            && tofu -chdir="$d" validate -no-color > /dev/null; then
+            echo "ok    $d"
+          else
+            echo "FAIL  $d" >&2
+            tofu -chdir="$d" validate -no-color >&2 || true
+            failed=$((failed + 1))
+          fi
+        done
+        [ "$failed" -eq 0 ]

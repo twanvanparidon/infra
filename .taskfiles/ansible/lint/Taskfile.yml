@@ -1,0 +1,20 @@
+# Lint Ansible playbooks and roles with ansible-lint.
+# Image: ci-runner ansible (python, ansible-core, ansible-lint).
+# Copy to .taskfiles/ansible/lint/Taskfile.yml, include as `ansible:lint`, run `task ansible:lint`.
+# ANSIBLE_DIR (default ansible) is the Ansible project: ansible-lint runs there and reads its
+# .ansible-lint; it passes while the directory has no YAML files.
+# Variables are per task: included Taskfiles share file-level vars.
+version: "3"
+
+tasks:
+  default:
+    desc: ansible-lint on ANSIBLE_DIR
+    vars:
+      ANSIBLE_DIR: '{{.ANSIBLE_DIR | default "ansible"}}'
+    cmds:
+      - |
+        if [ -z "$(find "{{.ANSIBLE_DIR}}" \( -name '*.yml' -o -name '*.yaml' \) 2> /dev/null | head -1)" ]; then
+          echo "no YAML files under {{.ANSIBLE_DIR}}, skipping"; exit 0
+        fi
+        cd "{{.ANSIBLE_DIR}}"
+        ansible-lint

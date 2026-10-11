@@ -9,6 +9,16 @@ includes:
   sops:
     taskfile: ./.taskfiles/sops.yml
     dir: .
+  # From ci-runner pipelines/<tool>/lint; CI runs the same tasks.
+  tofu:lint:
+    taskfile: ./.taskfiles/tofu/lint
+    dir: .
+  packer:lint:
+    taskfile: ./.taskfiles/packer/lint
+    dir: .
+  ansible:lint:
+    taskfile: ./.taskfiles/ansible/lint
+    dir: .
 
 tasks:
   default:
@@ -18,6 +28,17 @@ tasks:
       - |
         TASK=$(task --list --silent | grep -v '^default$' | gum filter --placeholder "Pick a task...") || exit 0
         task "$TASK"
+
+  lint:
+    desc: Run every lint step CI runs, with live output.
+    cmds:
+      - '{{.RUN}} "Checking OpenTofu formatting" task tofu:lint:fmt'
+      - '{{.RUN}} "Running tflint" task tofu:lint:tflint'
+      - '{{.RUN}} "Validating OpenTofu" task tofu:lint:validate'
+      - '{{.RUN}} "Checking Packer formatting" task packer:lint:fmt'
+      - '{{.RUN}} "Validating Packer" task packer:lint:validate'
+      - '{{.RUN}} "Running ansible-lint" task ansible:lint'
+      - '{{.RUN}} "Decrypting secrets" task sops:check'
 
   tools:
     desc: Print the version of every pinned tool.
