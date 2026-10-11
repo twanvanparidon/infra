@@ -1,0 +1,24 @@
+// The part of the tailnet policy file that CI depends on. The full policy lives
+// in the Tailscale admin console; keep this part in sync with it.
+{
+  // Only admins may create keys for tag:ci, e.g. through the OAuth client.
+  "tagOwners": {
+    "tag:ci": ["autogroup:admin"],
+  },
+
+  // CI reaches the Proxmox API and nothing else. The subnet router advertises
+  // 10.0.10.0/24; this grant narrows it to one port on one host.
+  "grants": [
+    {"src": ["tag:ci"], "dst": ["10.0.10.2"], "ip": ["tcp:8006"]},
+  ],
+
+  // The admin console rejects a policy where these fail, for example when an
+  // allow-all rule also matches tag:ci.
+  "tests": [
+    {
+      "src":    "tag:ci",
+      "accept": ["10.0.10.2:8006"],
+      "deny":   ["10.0.10.2:22", "10.0.10.1:443", "10.0.10.1:22"],
+    },
+  ],
+}

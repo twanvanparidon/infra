@@ -1,0 +1,42 @@
+# Check that CI reaches the Proxmox API over Tailscale. Run it by hand after
+# changing the Tailscale ACL or OAuth client; tofu jobs join the same way.
+# Never print Tailscale status or network details here: logs are public and can
+# reveal the home IP.
+
+name: tailnet
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".taskfiles/tailscale.yml"
+      - ".github/workflows/tailnet.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  reach:
+    runs-on: ubuntu-latest
+    environment: proxmox-plan
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
+      options: --user 1001:1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: task tailscale:up
+        env:
+          TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      # Unauthenticated, the API answers 401: that proves it is reachable.
+      - run: |
+          out="$(wget --no-check-certificate -O /dev/null https://10.0.10.2:8006/api2/json/version 2>&1 || true)"
+          case "$out" in
+            *" 401 "*) echo "Proxmox API reachable" ;;
+            *) echo "Proxmox API not reachable" >&2; exit 1 ;;
+          esac
+        env:
+          https_proxy: http://localhost:1055
+      - if: always()
+        run: task tailscale:down

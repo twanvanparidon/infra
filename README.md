@@ -52,6 +52,15 @@ OpenTofu talks to Proxmox with two API tokens, both privilege separated:
 
 VMs that are not in the `tofu` pool are out of reach for CI.
 
+CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node, without root, and serves an HTTP proxy on `localhost:1055`. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds that part of the policy. The `tailnet` workflow checks the connection.
+
+| Environment | Branches | Secrets |
+|---|---|---|
+| `proxmox-plan` | any | `TS_OAUTH_SECRET` |
+| `proxmox-apply` | `main` | `TS_OAUTH_SECRET`, `PROXMOX_VE_API_TOKEN` |
+
+Workflow logs are public. Never print Tailscale status, `netcheck` or verbose output, or any other network details in a workflow: they can reveal the home IP. `task tailscale:up` sends all Tailscale output to `/dev/null` for this reason.
+
 ## Secrets
 
 Secrets are files named `*.sops.<ext>`, encrypted with [SOPS](https://getsops.io) and [age](https://age-encryption.org) for two keys (see `.sops.yaml`):

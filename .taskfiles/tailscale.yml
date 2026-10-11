@@ -1,0 +1,44 @@
+# Join the tailnet from a CI job without root: tailscaled runs with userspace
+# networking and serves an HTTP proxy on localhost:1055; set
+# HTTPS_PROXY=http://localhost:1055 to reach Proxmox through it.
+# All Tailscale output goes to /dev/null: tailscaled logs peer endpoints, which
+# include the home IP, and workflow logs are public.
+version: '3'
+
+silent: true
+
+vars:
+  VERSION: 1.104.1
+  # https://pkgs.tailscale.com/stable/tailscale_<VERSION>_amd64.tgz.sha256
+  SHA256: 108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528
+  DIR: /tmp/tailscale
+  TS: '{{.DIR}}/tailscale --socket={{.DIR}}/tailscaled.sock'
+
+tasks:
+  up:
+    desc: Join the tailnet as an ephemeral tag:ci node (CI only; needs TS_CLIENT_SECRET).
+    preconditions:
+      - sh: test -n "$TS_CLIENT_SECRET"
+        msg: TS_CLIENT_SECRET is not set
+    cmds:
+      - |
+        mkdir -p {{.DIR}}
+        wget -q -O {{.DIR}}/tailscale.tgz https://pkgs.tailscale.com/stable/tailscale_{{.VERSION}}_amd64.tgz
+        echo "{{.SHA256}}  {{.DIR}}/tailscale.tgz" | sha256sum -c -s
+        tar -xzf {{.DIR}}/tailscale.tgz -C {{.DIR}} --strip-components=1
+        nohup {{.DIR}}/tailscaled --tun=userspace-networking --state=mem: \
+          --socket={{.DIR}}/tailscaled.sock --outbound-http-proxy-listen=localhost:1055 \
+          --no-logs-no-support > /dev/null 2>&1 &
+        sleep 2
+        if ! {{.TS}} up --client-secret="$TS_CLIENT_SECRET?preauthorized=true" \
+          --advertise-tags=tag:ci --accept-routes --hostname="ci-${GITHUB_RUN_ID:-local}" \
+          --timeout=60s > /dev/null 2>&1; then
+          echo "tailscale up failed; output is hidden because it can contain the home IP" >&2
+          exit 1
+        fi
+        echo "joined the tailnet as tag:ci"
+
+  down:
+    desc: Leave the tailnet; the ephemeral node is removed right away.
+    cmds:
+      - '{{.TS}} logout > /dev/null 2>&1 || true'
