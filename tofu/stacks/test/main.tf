@@ -26,5 +26,5 @@ terraform {
 }
 
 resource "terraform_data" "test" {
-  input = "test"
+  input = "applied from ci"
 }
