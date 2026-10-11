@@ -29,7 +29,8 @@ concurrency:
   group: tofu-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Every job runs as the hosted runner's user (owns the workspace) instead of root.
+# Jobs run as the hosted runner's user (owns the workspace) instead of root, except
+# those that reach Proxmox: they join the tailnet first, which needs root.
 
 jobs:
   changes:
@@ -53,9 +54,14 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.stacks != '[]'
     runs-on: ubuntu-latest
+    # Read-only: the dev token comes from sops. No deployment record per plan.
+    environment:
+      name: proxmox-plan
+      deployment: false
     container:
       image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
-      options: --user 1001:1001
+      # Root, NET_ADMIN and the TUN device let tailscaled create tailscale0.
+      options: --user 0:0 --cap-add=NET_ADMIN --device=/dev/net/tun
     permissions:
       contents: read
       pull-requests: write
@@ -67,6 +73,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - run: task tailscale:up
+        env:
+          TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       # Keep the output for the comment, then fail the step if the plan failed.
       - id: plan
         run: |
@@ -108,14 +117,19 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...issue, body });
             }
+      - if: always()
+        run: task tailscale:down
 
   apply:
     needs: changes
     if: github.event_name == 'push' && needs.changes.outputs.stacks != '[]'
     runs-on: ubuntu-latest
+    # Holds the CI write token; only jobs on main may use it.
+    environment: proxmox-apply
     container:
       image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
-      options: --user 1001:1001
+      # Root, NET_ADMIN and the TUN device let tailscaled create tailscale0.
+      options: --user 0:0 --cap-add=NET_ADMIN --device=/dev/net/tun
     permissions:
       contents: write
     strategy:
@@ -133,10 +147,14 @@ jobs:
         # zizmor: ignore[artipacked] this job pushes the state commit.
         with:
           ref: main
+      - run: task tailscale:up
+        env:
+          TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - id: apply
         run: task tofu:apply STACK="$STACK"
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
           STACK: ${{ matrix.stack }}
       # Also after a failed apply: the state then holds what was created.
       # Pushes with GITHUB_TOKEN start no workflows, so this commit applies nothing.
@@ -155,3 +173,5 @@ jobs:
           exit 1
         env:
           STACK: ${{ matrix.stack }}
+      - if: always()
+        run: task tailscale:down

@@ -12,7 +12,8 @@ on:
 permissions:
   contents: read
 
-# Every job runs as the hosted runner's user (owns the workspace) instead of root.
+# Jobs run as the hosted runner's user (owns the workspace) instead of root, except
+# drift: it joins the tailnet to reach Proxmox, which needs root.
 
 jobs:
   stacks:
@@ -33,9 +34,14 @@ jobs:
     needs: stacks
     if: needs.stacks.outputs.stacks != '[]'
     runs-on: ubuntu-latest
+    # Read-only: the dev token comes from sops. No deployment record per check.
+    environment:
+      name: proxmox-plan
+      deployment: false
     container:
       image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
-      options: --user 1001:1001
+      # Root, NET_ADMIN and the TUN device let tailscaled create tailscale0.
+      options: --user 0:0 --cap-add=NET_ADMIN --device=/dev/net/tun
     strategy:
       fail-fast: false
       matrix:
@@ -44,8 +50,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - run: task tailscale:up
+        env:
+          TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - run: task tofu:plan STACK="$STACK" -- -detailed-exitcode
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           TF_CLI_ARGS: -no-color
           STACK: ${{ matrix.stack }}
+      - if: always()
+        run: task tailscale:down
