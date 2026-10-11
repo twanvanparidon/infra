@@ -22,6 +22,8 @@ task tofu:plan STACK=test   # plan one stack under tofu/stacks
 
 Each stack under `tofu/stacks/` keeps its state in `terraform.tfstate` next to the code, committed to the repo. OpenTofu encrypts state and plan files with a passphrase from `secrets/tofu.sops.yaml`; the `tofu` tasks pass it in through `TF_ENCRYPTION`, and without it `tofu plan` fails.
 
+A pull request that changes a stack gets a `tofu plan` comment for it, updated on every push.
+
 ## Layout
 
 | Path | Contents |
