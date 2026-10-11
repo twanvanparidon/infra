@@ -31,10 +31,15 @@ jobs:
           TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - run: task tailscale:route
       - run: task tailscale:ping
-      # The proxy answers 200 once its TCP connection to the API is up.
+      # The proxy answers 200 once its TCP connection to the API is up. The
+      # bytes sent to the subnet router show whether it used the tunnel at all.
       - run: |
+          tx() { /tmp/tailscale/tailscale --socket=/tmp/tailscale/tailscaled.sock status --json \
+            | jq '[.Peer[] | select((.PrimaryRoutes // []) | index("10.0.10.0/24")) | .TxBytes][0]'; }
+          before="$(tx)"
           printf 'CONNECT 10.0.10.2:8006 HTTP/1.1\r\nHost: 10.0.10.2:8006\r\n\r\n' \
             | nc -w 20 localhost 1055 | head -1 || true
+          echo "bytes sent to the subnet router during CONNECT: $(( $(tx) - before ))"
       # Unauthenticated, the API answers 401: that proves it is reachable.
       # wget only names localhost and 10.0.10.2, so its error is safe to print.
       - run: |
