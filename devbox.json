@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.18.4/.schema/devbox.schema.json",
+  "packages": [
+    "opentofu@1.13.1",
+    "tflint@0.64.0",
+    "packer@1.15.4",
+    "ansible@2.21.4",
+    "ansible-lint@25.8.2",
+    "sops@3.13.3",
+    "age@1.3.2",
+    "go-task@3.53.1",
+    "gum@2.0.0",
+    "yq-go@4.54.1"
+  ],
+  "env": {
+    "SOPS_AGE_KEY_FILE": "$HOME/.config/sops/age/keys.txt"
+  },
+  "shell": {
+    "init_hook": [],
+    "scripts": {}
+  }
+}

@@ -1,0 +1,51 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.agekey
+
+# OpenTofu
+# State of CI stacks is committed (encrypted); only local lab state stays out.
+.terraform/
+*.tfplan
+*.tfstate.backup
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+tofu/stacks/lab-*/*.tfstate
+
+# Packer
+packer_cache/
+output-*/
+
+# Ansible
+*.retry
+.ansible/
+
+# OS
+.task/
+.devbox/
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+*~
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.iml
+*.swp
+*.swo
+*.sublime-workspace
+
+# Logs & temp
+logs/
+*.log
+*.tmp
+*.bak
