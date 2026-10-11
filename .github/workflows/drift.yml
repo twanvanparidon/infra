@@ -24,6 +24,8 @@ jobs:
       stacks: ${{ steps.stacks.outputs.stacks }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - id: stacks
         run: echo "stacks=$(task tofu:stacks)" >> "$GITHUB_OUTPUT"
 
@@ -40,7 +42,10 @@ jobs:
         stack: ${{ fromJSON(needs.stacks.outputs.stacks) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: task tofu:plan STACK=${{ matrix.stack }} -- -detailed-exitcode
+        with:
+          persist-credentials: false
+      - run: task tofu:plan STACK="$STACK" -- -detailed-exitcode
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           TF_CLI_ARGS: -no-color
+          STACK: ${{ matrix.stack }}

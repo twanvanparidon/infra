@@ -13,7 +13,7 @@ Only CI applies changes.
 
 ```sh
 devbox shell
-task lint    # what CI runs: fmt, tflint, validate, ansible-lint, sops and gitleaks
+task lint    # what CI runs: fmt, tflint, validate, ansible-lint, zizmor, sops and gitleaks
 task         # menu of every task
 task tofu:plan STACK=test   # plan one stack under tofu/stacks
 ```

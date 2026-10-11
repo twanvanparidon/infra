@@ -41,8 +41,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: changed
-        run: echo "stacks=$(task tofu:changed BASE=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }})" >> "$GITHUB_OUTPUT"
+        run: echo "stacks=$(task tofu:changed BASE="$BASE")" >> "$GITHUB_OUTPUT"
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
 
   plan:
     needs: changes
@@ -60,10 +63,12 @@ jobs:
         stack: ${{ fromJSON(needs.changes.outputs.stacks) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Keep the output for the comment, then fail the step if the plan failed.
       - id: plan
         run: |
-          task tofu:plan STACK=${{ matrix.stack }} > plan.txt 2>&1
+          task tofu:plan STACK="$STACK" > plan.txt 2>&1
           rc=$?
           cat plan.txt
           exit $rc
@@ -71,6 +76,7 @@ jobs:
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           TF_CLI_ARGS: -no-color
+          STACK: ${{ matrix.stack }}
       # One comment per stack, updated on every push.
       - if: always() && steps.plan.outcome != 'skipped'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -122,24 +128,28 @@ jobs:
     steps:
       # The latest main, so the state includes commits from earlier applies.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # zizmor: ignore[artipacked] this job pushes the state commit.
         with:
           ref: main
       - id: apply
-        run: task tofu:apply STACK=${{ matrix.stack }}
+        run: task tofu:apply STACK="$STACK"
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          STACK: ${{ matrix.stack }}
       # Also after a failed apply: the state then holds what was created.
       # Pushes with GITHUB_TOKEN start no workflows, so this commit applies nothing.
       - if: always() && steps.apply.outcome != 'skipped'
         run: |
-          state=tofu/stacks/${{ matrix.stack }}/terraform.tfstate
+          state=tofu/stacks/${STACK}/terraform.tfstate
           git add "$state"
           if git diff --cached --quiet; then echo "state unchanged"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "chore(tofu): update ${{ matrix.stack }} state" -m "Applied from ${GITHUB_SHA}."
+            commit -m "chore(tofu): update ${STACK} state" -m "Applied from ${GITHUB_SHA}."
           # Applies of other stacks push too; rebase onto them and retry.
           for _ in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep 5
           done
           exit 1
+        env:
+          STACK: ${{ matrix.stack }}
