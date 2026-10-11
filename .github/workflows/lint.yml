@@ -1,0 +1,70 @@
+# Lint OpenTofu, Packer and Ansible, and check the CI key decrypts every secret.
+# Each job runs the ci-runner pipeline for its tool in that tool's image; locally: `task lint`.
+
+name: lint
+
+on:
+  pull_request:
+    paths:
+      - "tofu/**"
+      - "packer/**"
+      - "ansible/**"
+      - "secrets/**"
+      - ".sops.yaml"
+      - "Taskfile.yml"
+      - ".taskfiles/**"
+      - ".github/workflows/lint.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tofu/**"
+      - "packer/**"
+      - "ansible/**"
+      - "secrets/**"
+      - ".sops.yaml"
+      - "Taskfile.yml"
+      - ".taskfiles/**"
+      - ".github/workflows/lint.yml"
+
+permissions:
+  contents: read
+
+# Every job runs as the hosted runner's user (owns the workspace) instead of root.
+
+jobs:
+  tofu:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
+      options: --user 1001:1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: task tofu:lint:fmt
+      - run: task tofu:lint:tflint
+        env:
+          # tflint --init downloads plugins from GitHub; unauthenticated it hits rate limits.
+          GITHUB_TOKEN: ${{ github.token }}
+      - run: task tofu:lint:validate
+      # The tofu image ships sops; proves the CI key reads every secret.
+      - run: task sops:check
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+  packer:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/packer:1.0.0@sha256:2f2cf428e3be430192d1a5e022759dd8d5692eeadf93f3703d7747e098624b3f
+      options: --user 1001:1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: task packer:lint:fmt
+      - run: task packer:lint:validate
+
+  ansible:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/ansible:1.0.0@sha256:c7dcbfb74a92786a9779bce8485e8df22d1ddac244a142858b9e33e276359721
+      options: --user 1001:1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: task ansible:lint

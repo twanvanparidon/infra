@@ -1,0 +1,47 @@
+# Lint Packer templates: format check and validate. No builds.
+# Image: ci-runner packer (packer).
+# Copy to .taskfiles/packer/lint/Taskfile.yml, include as `packer:lint`,
+# run `task packer:lint` (all) or one step: packer:lint:fmt, :validate.
+# PACKER_DIR (default packer) holds one template per directory; every step passes while it
+# has no .pkr.hcl files. validate is -syntax-only: a full validate needs every variable
+# and the plugins, which belong to the build.
+# Variables are per task: included Taskfiles share file-level vars.
+version: "3"
+
+tasks:
+  default:
+    desc: Format check and validate
+    cmds:
+      - task: fmt
+      - task: validate
+
+  fmt:
+    desc: packer fmt -check on PACKER_DIR
+    vars:
+      PACKER_DIR: '{{.PACKER_DIR | default "packer"}}'
+    cmds:
+      - |
+        if [ -z "$(find "{{.PACKER_DIR}}" -name '*.pkr.hcl' 2> /dev/null | head -1)" ]; then
+          echo "no .pkr.hcl files under {{.PACKER_DIR}}, skipping"; exit 0
+        fi
+        packer fmt -check -diff -recursive "{{.PACKER_DIR}}"
+
+  validate:
+    desc: packer validate -syntax-only every template directory under PACKER_DIR
+    vars:
+      PACKER_DIR: '{{.PACKER_DIR | default "packer"}}'
+    cmds:
+      - |
+        dirs="$(find "{{.PACKER_DIR}}" -name '*.pkr.hcl' -exec dirname {} \; 2> /dev/null | sort -u)"
+        if [ -z "$dirs" ]; then echo "no .pkr.hcl files under {{.PACKER_DIR}}, skipping"; exit 0; fi
+        failed=0
+        for d in $dirs; do
+          if packer validate -syntax-only "$d" > /dev/null; then
+            echo "ok    $d"
+          else
+            echo "FAIL  $d" >&2
+            packer validate -syntax-only "$d" >&2 || true
+            failed=$((failed + 1))
+          fi
+        done
+        [ "$failed" -eq 0 ]
