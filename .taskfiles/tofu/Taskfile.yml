@@ -29,6 +29,15 @@ tasks:
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
       - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false
 
+  apply:
+    desc: tofu apply a stack without asking (STACK=name); CI runs this on main
+    requires:
+      vars: [STACK]
+    env: *encryption
+    cmds:
+      - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
+      - tofu -chdir=tofu/stacks/{{.STACK}} apply -input=false -auto-approve
+
   changed:
     desc: Print the stacks changed since BASE (default origin/main) as a JSON list
     vars:
@@ -40,7 +49,8 @@ tasks:
         if printf '%s\n' "$files" | grep -qE '^(tofu/modules/|secrets/tofu\.sops\.yaml$|\.taskfiles/tofu/Taskfile\.yml$|\.github/workflows/tofu\.yml$)'; then
           stacks="$(ls tofu/stacks)"
         else
-          stacks="$(printf '%s\n' "$files" | sed -n 's|^tofu/stacks/\([^/]*\)/.*|\1|p' | sort -u)"
+          # State commits from CI are not changes to apply.
+          stacks="$(printf '%s\n' "$files" | grep -v '/terraform\.tfstate$' | sed -n 's|^tofu/stacks/\([^/]*\)/.*|\1|p' | sort -u)"
         fi
         out=""
         for s in $stacks; do

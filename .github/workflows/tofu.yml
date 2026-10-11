@@ -1,4 +1,5 @@
-# Plan every tofu stack a pull request changes and post the plan as a PR comment.
+# Plan every tofu stack a pull request changes and post the plan as a PR comment;
+# apply every stack a push to main changes and commit its encrypted state back.
 # Each step is a task in .taskfiles/tofu; locally: `task tofu:plan STACK=<name>`.
 
 name: tofu
@@ -10,13 +11,21 @@ on:
       - "secrets/tofu.sops.yaml"
       - ".taskfiles/tofu/Taskfile.yml"
       - ".github/workflows/tofu.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tofu/**"
+      - "secrets/tofu.sops.yaml"
+      - ".taskfiles/tofu/Taskfile.yml"
+      - ".github/workflows/tofu.yml"
 
 permissions:
   contents: read
 
+# A new push to a PR cancels its running plan; runs on main never cancel.
 concurrency:
-  group: tofu-plan-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: tofu-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every job runs as the hosted runner's user (owns the workspace) instead of root.
 
@@ -33,11 +42,11 @@ jobs:
         with:
           fetch-depth: 0
       - id: changed
-        run: echo "stacks=$(task tofu:changed BASE=origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+        run: echo "stacks=$(task tofu:changed BASE=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }})" >> "$GITHUB_OUTPUT"
 
   plan:
     needs: changes
-    if: needs.changes.outputs.stacks != '[]'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.stacks != '[]'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
@@ -91,3 +100,46 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...issue, body });
             }
+
+  apply:
+    needs: changes
+    if: github.event_name == 'push' && needs.changes.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/twanvanparidon/ci-runner/tofu:1.0.0@sha256:5e620e4267934b60f790bbadc201fcb42adbbf8e33e086dda74237d76365ebd4
+      options: --user 1001:1001
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ fromJSON(needs.changes.outputs.stacks) }}
+    # The lock: one apply per stack at a time. A newer queued run replaces an older
+    # queued one, which is safe because it applies the newer main.
+    concurrency:
+      group: tofu-apply-${{ matrix.stack }}
+      cancel-in-progress: false
+    steps:
+      # The latest main, so the state includes commits from earlier applies.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - id: apply
+        run: task tofu:apply STACK=${{ matrix.stack }}
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      # Also after a failed apply: the state then holds what was created.
+      # Pushes with GITHUB_TOKEN start no workflows, so this commit applies nothing.
+      - if: always() && steps.apply.outcome != 'skipped'
+        run: |
+          state=tofu/stacks/${{ matrix.stack }}/terraform.tfstate
+          git add "$state"
+          if git diff --cached --quiet; then echo "state unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "chore(tofu): update ${{ matrix.stack }} state" -m "Applied from ${GITHUB_SHA}."
+          # Applies of other stacks push too; rebase onto them and retry.
+          for _ in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
