@@ -38,6 +38,16 @@ tasks:
         fi
         echo "joined the tailnet as tag:ci"
 
+  route:
+    desc: Say whether a subnet router for ROUTE (default 10.0.10.0/24) is visible and online; prints no addresses.
+    vars:
+      ROUTE: '{{.ROUTE | default "10.0.10.0/24"}}'
+    cmds:
+      - |
+        online="$({{.TS}} status --json | jq -r --arg r "{{.ROUTE}}" '[.Peer[] | select((.PrimaryRoutes // []) | index($r)) | .Online] | if length == 0 then "none" else (.[0] | tostring) end')"
+        echo "subnet router for {{.ROUTE}}: online=$online"
+        [ "$online" = "true" ]
+
   down:
     desc: Leave the tailnet; the ephemeral node is removed right away.
     cmds:

@@ -29,12 +29,14 @@ jobs:
       - run: task tailscale:up
         env:
           TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      - run: task tailscale:route
       # Unauthenticated, the API answers 401: that proves it is reachable.
+      # wget only names localhost and 10.0.10.2, so its error is safe to print.
       - run: |
-          out="$(wget --no-check-certificate -O /dev/null https://10.0.10.2:8006/api2/json/version 2>&1 || true)"
+          out="$(wget -T 20 --no-check-certificate -O /dev/null https://10.0.10.2:8006/api2/json/version 2>&1 || true)"
           case "$out" in
             *" 401 "*) echo "Proxmox API reachable" ;;
-            *) echo "Proxmox API not reachable" >&2; exit 1 ;;
+            *) echo "Proxmox API not reachable: $out" >&2; exit 1 ;;
           esac
         env:
           https_proxy: http://localhost:1055
