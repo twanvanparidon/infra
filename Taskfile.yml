@@ -5,6 +5,11 @@ silent: true
 vars:
   RUN: '{{.ROOT_DIR}}/scripts/run.sh'
 
+includes:
+  sops:
+    taskfile: ./.taskfiles/sops.yml
+    dir: .
+
 tasks:
   default:
     desc: Pick a task to run from an interactive menu.

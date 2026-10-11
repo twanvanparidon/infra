@@ -1,0 +1,52 @@
+version: '3'
+
+silent: true
+
+vars:
+  # Set by devbox; sops reads the same file to decrypt.
+  KEY_FILE: '{{.SOPS_AGE_KEY_FILE | default (printf "%s/.config/sops/age/keys.txt" .HOME)}}'
+  # Every encrypted file; .sops.yaml decides the keys.
+  FILES:
+    sh: git ls-files --cached --others --exclude-standard '*.sops.*' ':!:.sops.yaml'
+
+tasks:
+  init:
+    desc: Create the personal age key, if there is none yet.
+    status:
+      - test -f "{{.KEY_FILE}}"
+    cmds:
+      - mkdir -p "$(dirname "{{.KEY_FILE}}")"
+      - age-keygen -o "{{.KEY_FILE}}" 2>/dev/null
+      - gum log --level info "Created age key {{.KEY_FILE}}, back it up to keep your secrets readable"
+
+  encrypt:
+    desc: Encrypt a file in place for the keys in .sops.yaml (FILE=path/to/name.sops.yaml).
+    deps: [init]
+    requires:
+      vars: [FILE]
+    cmds:
+      - sops encrypt --in-place "{{.FILE}}"
+      - gum log --level info "Encrypted {{.FILE}}, edit it with 'sops edit {{.FILE}}'"
+
+  check:
+    desc: Decrypt every encrypted file to prove the current key can read it.
+    cmds:
+      - for: { var: FILES }
+        cmd: sops decrypt "{{.ITEM}}" > /dev/null && echo "ok {{.ITEM}}"
+
+  updatekeys:
+    desc: Re-encrypt every file for the keys currently in .sops.yaml.
+    cmds:
+      - for: { var: FILES }
+        cmd: sops updatekeys --yes "{{.ITEM}}"
+
+  ci-key:
+    desc: Replace the CI age key; prints the public key to put in .sops.yaml.
+    prompt: This replaces the SOPS_AGE_KEY repo secret. Continue?
+    cmds:
+      - |
+        key=$(age-keygen 2>/dev/null)
+        printf '%s\n' "$key" | gh secret set SOPS_AGE_KEY
+        pub=$(printf '%s\n' "$key" | age-keygen -y)
+        gum log --level info "New CI public key: $pub"
+        gum log --level info "Replace the ci key in .sops.yaml, then run 'task sops:updatekeys'"
