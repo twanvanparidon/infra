@@ -1,0 +1,40 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended", "helpers:pinGitHubActionDigests"],
+  timezone: "Europe/Amsterdam",
+  schedule: ["before 9am on monday"],
+  customManagers: [
+    {
+      // ci-runner images in the workflows, with or without a digest.
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      matchStrings: ["(?<depName>ghcr\\.io/twanvanparidon/ci-runner/[a-z0-9-]+):(?<currentValue>\\d+\\.\\d+\\.\\d+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"],
+      datasourceTemplate: "docker",
+      versioningTemplate: "semver",
+    },
+  ],
+  packageRules: [
+    {
+      // The custom manager above owns these pins; don't update them twice.
+      matchManagers: ["github-actions"],
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/twanvanparidon/ci-runner/**"],
+      enabled: false,
+    },
+    {
+      matchManagers: ["github-actions"],
+      matchDepTypes: ["action"],
+      groupName: "github actions",
+    },
+    {
+      matchManagers: ["devbox"],
+      groupName: "devbox",
+    },
+    {
+      // Our own CI images: one PR for all of them, at any time.
+      matchPackageNames: ["ghcr.io/twanvanparidon/ci-runner/**"],
+      groupName: "ci-runner images",
+      schedule: ["at any time"],
+    },
+  ],
+}
