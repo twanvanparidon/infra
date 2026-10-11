@@ -41,8 +41,14 @@ tasks:
       - '{{.RUN}} "Checking Packer formatting" task packer:lint:fmt'
       - '{{.RUN}} "Validating Packer" task packer:lint:validate'
       - '{{.RUN}} "Running ansible-lint" task ansible:lint'
+      - '{{.RUN}} "Auditing GitHub Actions workflows" task actions:lint'
       - '{{.RUN}} "Decrypting secrets" task sops:check'
       - '{{.RUN}} "Scanning for leaked secrets" task leaks'
+
+  actions:lint:
+    desc: Audit the GitHub Actions workflows for security issues with zizmor.
+    cmds:
+      - zizmor --offline .github/workflows
 
   leaks:
     desc: Scan the working tree and git history for plaintext secrets.
@@ -61,6 +67,7 @@ tasks:
       - sops --version | head -1
       - age --version
       - gitleaks version
+      - zizmor --version
       - task --version
       - gum --version
       - yq --version
