@@ -1,0 +1,29 @@
+version: '3'
+
+silent: true
+
+vars:
+  RUN: '{{.ROOT_DIR}}/scripts/run.sh'
+
+tasks:
+  default:
+    desc: Pick a task to run from an interactive menu.
+    interactive: true
+    cmds:
+      - |
+        TASK=$(task --list --silent | grep -v '^default$' | gum filter --placeholder "Pick a task...") || exit 0
+        task "$TASK"
+
+  tools:
+    desc: Print the version of every pinned tool.
+    cmds:
+      - tofu version | head -1
+      - tflint --version | head -1
+      - packer version | head -1
+      - ansible --version | head -1
+      - ansible-lint --version | head -1
+      - sops --version | head -1
+      - age --version
+      - task --version
+      - gum --version
+      - yq --version
