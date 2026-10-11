@@ -30,6 +30,10 @@ jobs:
         env:
           TS_CLIENT_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       - run: task tailscale:route
+      # The proxy answers 200 once its TCP connection to the API is up.
+      - run: |
+          printf 'CONNECT 10.0.10.2:8006 HTTP/1.1\r\nHost: 10.0.10.2:8006\r\n\r\n' \
+            | nc -w 20 localhost 1055 | head -1 || true
       # Unauthenticated, the API answers 401: that proves it is reachable.
       # wget only names localhost and 10.0.10.2, so its error is safe to print.
       - run: |
