@@ -24,6 +24,8 @@ Each stack under `tofu/stacks/` keeps its state in `terraform.tfstate` next to t
 
 A pull request that changes a stack gets a `tofu plan` comment for it, updated on every push. After the merge, CI applies the stack and commits its state to `main`; one apply per stack runs at a time.
 
+The daily `drift` workflow, also started by hand from the Actions tab, plans every stack and fails when the infrastructure no longer matches the code.
+
 ## Layout
 
 | Path | Contents |

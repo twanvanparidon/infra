@@ -20,14 +20,14 @@ tasks:
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false
 
   plan:
-    desc: tofu plan a stack (STACK=name)
+    desc: tofu plan a stack (STACK=name); extra flags after --
     requires:
       vars: [STACK]
     env: *encryption
     cmds:
       # Only errors from init; the output is the plan.
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
-      - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false
+      - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false {{.CLI_ARGS}}
 
   apply:
     desc: tofu apply a stack without asking (STACK=name); CI runs this on main
@@ -37,6 +37,18 @@ tasks:
     cmds:
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
       - tofu -chdir=tofu/stacks/{{.STACK}} apply -input=false -auto-approve
+
+  stacks:
+    desc: Print every stack as a JSON list
+    cmds:
+      - |
+        out=""
+        for d in tofu/stacks/*/; do
+          s="$(basename "$d")"
+          ls "$d"*.tf > /dev/null 2>&1 || continue
+          out="$out${out:+,}\"$s\""
+        done
+        echo "[$out]"
 
   changed:
     desc: Print the stacks changed since BASE (default origin/main) as a JSON list
