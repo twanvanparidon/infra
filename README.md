@@ -50,6 +50,8 @@ task packer:test    # boot the newest build and check it
 
 `packer:test` boots the image on a throwaway overlay with a test user from cloud-init, like a clone, and checks SSH, the guest agent, the hardening and disk growth. It leaves no VM or files behind.
 
+The `packer` workflow builds and tests the image on every pull request that changes it. On `main`, and every Monday for Debian security updates, it also publishes the image as a `debian-base-<date>` GitHub release with a `SHA256SUMS` file, and deletes all but the newest 3. A second build on the same day gets `.1`, `.2`, so a release never changes. CI installs its tools with devbox, since no ci-runner image ships QEMU.
+
 The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with emulation on macOS (a few minutes on Apple silicon).
 
 ## Proxmox access
