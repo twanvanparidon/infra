@@ -1,0 +1,9 @@
+#cloud-config
+# Build VM only: a temporary user Packer logs in with over SSH.
+users:
+  - name: packer
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    plain_text_passwd: ${password}
+ssh_pwauth: true

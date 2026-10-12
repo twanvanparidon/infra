@@ -12,6 +12,9 @@ includes:
   tofu:
     taskfile: ./.taskfiles/tofu
     dir: .
+  packer:
+    taskfile: ./.taskfiles/packer
+    dir: .
   pve:
     taskfile: ./.taskfiles/pve.yml
     dir: .

@@ -39,6 +39,16 @@ The daily `drift` workflow, also started by hand from the Actions tab, plans eve
 | `.taskfiles/` | Task includes: `sops`, `tofu` (init and plan a stack) and the lint pipelines from [ci-runner](https://github.com/twanvanparidon/ci-runner) |
 | `.github/workflows/` | CI, every step is a `task` in a ci-runner image |
 
+## Images
+
+`packer/debian-base` builds the base image for VMs: the Debian 13 genericcloud image with `qemu-guest-agent`, `growpart`, unattended security upgrades and SSH hardening (keys only, no root login). It holds no users or keys; cloud-init sets those per VM.
+
+```sh
+task packer:build   # build with local QEMU into packer/debian-base/output-<date>/
+```
+
+The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with emulation on macOS (a few minutes on Apple silicon).
+
 ## Proxmox access
 
 OpenTofu talks to Proxmox with two API tokens, both privilege separated:
