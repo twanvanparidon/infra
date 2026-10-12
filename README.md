@@ -45,7 +45,10 @@ The daily `drift` workflow, also started by hand from the Actions tab, plans eve
 
 ```sh
 task packer:build   # build with local QEMU into packer/debian-base/output-<date>/
+task packer:test    # boot the newest build and check it
 ```
+
+`packer:test` boots the image on a throwaway overlay with a test user from cloud-init, like a clone, and checks SSH, the guest agent, the hardening and disk growth. It leaves no VM or files behind.
 
 The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with emulation on macOS (a few minutes on Apple silicon).
 

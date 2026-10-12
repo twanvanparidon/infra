@@ -1,6 +1,7 @@
 # Build Packer images under packer/ (IMAGE=name). The build VM runs in local
 # QEMU: KVM on Linux, emulation on macOS, which is slow but works on Apple
-# silicon. The image lands in packer/<IMAGE>/output-<date>/.
+# silicon. The image lands in packer/<IMAGE>/output-<date>/; `test` boots it
+# and runs packer/<IMAGE>/test.sh.
 version: "3"
 
 silent: true
@@ -14,3 +15,15 @@ tasks:
     cmds:
       - packer init packer/{{.IMAGE}}
       - packer build -force -var accelerator={{.ACCELERATOR}} packer/{{.IMAGE}}
+
+  test:
+    desc: Boot a built image and check it (IMAGE=name, default debian-base; FILE=qcow2, default the newest build)
+    vars:
+      IMAGE: '{{.IMAGE | default "debian-base"}}'
+      FILE:
+        sh: echo "${FILE:-$(ls -t packer/{{.IMAGE}}/output-*/*.qcow2 2> /dev/null | head -n 1)}"
+    preconditions:
+      - sh: test -n "{{.FILE}}"
+        msg: No build of {{.IMAGE}} found; run `task packer:build` first
+    cmds:
+      - packer/{{.IMAGE}}/test.sh "{{.FILE}}"
