@@ -1,7 +1,7 @@
 # Build Packer images under packer/ (IMAGE=name). The build VM runs in local
 # QEMU: KVM on Linux, emulation on macOS, which is slow but works on Apple
 # silicon. The image lands in packer/<IMAGE>/output-<date>/; `test` boots it
-# and runs packer/<IMAGE>/test.sh.
+# and runs packer/<IMAGE>/test.sh; CI publishes it as a GitHub release.
 version: "3"
 
 silent: true
@@ -27,3 +27,44 @@ tasks:
         msg: No build of {{.IMAGE}} found; run `task packer:build` first
     cmds:
       - packer/{{.IMAGE}}/test.sh "{{.FILE}}"
+
+  publish:
+    desc: Publish a built image as a GitHub release (CI only; IMAGE=name, FILE=qcow2, default the newest build)
+    vars:
+      IMAGE: '{{.IMAGE | default "debian-base"}}'
+      FILE:
+        sh: echo "${FILE:-$(ls -t packer/{{.IMAGE}}/output-*/*.qcow2 2> /dev/null | head -n 1)}"
+    preconditions:
+      - sh: test -n "{{.FILE}}"
+        msg: No build of {{.IMAGE}} found; run `task packer:build` first
+    cmds:
+      # The tag is the file name (<image>-<date>); a second build on the same
+      # day gets .1, .2, ... so a published release never changes.
+      - |
+        dir=$(dirname "{{.FILE}}")
+        base=$(basename "{{.FILE}}" .qcow2)
+        tag=$base
+        n=0
+        while gh release view "$tag" > /dev/null 2>&1; do
+          n=$((n + 1))
+          tag="$base.$n"
+        done
+        [ "$tag" = "$base" ] || mv "{{.FILE}}" "$dir/$tag.qcow2"
+        (cd "$dir" && shasum -a 256 "$tag.qcow2" > SHA256SUMS)
+        gh release create "$tag" "$dir/$tag.qcow2" "$dir/SHA256SUMS" \
+          --title "$tag" --notes "\`{{.IMAGE}}\` image built from $(git rev-parse HEAD)."
+        echo "published $tag"
+
+  prune:
+    desc: Delete all but the newest KEEP releases of an image (IMAGE=name, KEEP=3)
+    vars:
+      IMAGE: '{{.IMAGE | default "debian-base"}}'
+      KEEP: '{{.KEEP | default "3"}}'
+    cmds:
+      - |
+        gh release list --limit 100 --json tagName,createdAt \
+          --jq '[.[] | select(.tagName | startswith("{{.IMAGE}}-"))] | sort_by(.createdAt) | reverse | .[{{.KEEP}}:][].tagName' |
+          while read -r tag; do
+            gh release delete "$tag" --cleanup-tag --yes
+            echo "deleted $tag"
+          done
