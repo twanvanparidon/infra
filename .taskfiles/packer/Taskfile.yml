@@ -1,0 +1,16 @@
+# Build Packer images under packer/ (IMAGE=name). The build VM runs in local
+# QEMU: KVM on Linux, emulation on macOS, which is slow but works on Apple
+# silicon. The image lands in packer/<IMAGE>/output-<date>/.
+version: "3"
+
+silent: true
+
+tasks:
+  build:
+    desc: Build an image with local QEMU (IMAGE=name, default debian-base)
+    vars:
+      IMAGE: '{{.IMAGE | default "debian-base"}}'
+      ACCELERATOR: '{{if eq OS "linux"}}kvm{{else}}tcg{{end}}'
+    cmds:
+      - packer init packer/{{.IMAGE}}
+      - packer build -force -var accelerator={{.ACCELERATOR}} packer/{{.IMAGE}}
