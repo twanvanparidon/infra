@@ -433,6 +433,44 @@
         }
       }
     },
+    "socat@1.8.1.3": {
+      "last_modified": "2026-10-08T19:21:32Z",
+      "resolved": "github:NixOS/nixpkgs/8edc0c72e3a38faf5434e40d1f19431125fe4b30#socat",
+      "source": "devbox-search",
+      "version": "1.8.1.3",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/svyfi7z57bgdfpg174byvsxwrlp3bgnd-socat-1.8.1.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/svyfi7z57bgdfpg174byvsxwrlp3bgnd-socat-1.8.1.3"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/a64164x5yrkgmm42vccw708ly9awyjnb-socat-1.8.1.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/a64164x5yrkgmm42vccw708ly9awyjnb-socat-1.8.1.3"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/cnyc9qjyirbgw9mdbmzq87m19xr8wpg9-socat-1.8.1.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/cnyc9qjyirbgw9mdbmzq87m19xr8wpg9-socat-1.8.1.3"
+        }
+      }
+    },
     "sops@3.13.3": {
       "last_modified": "2026-10-08T19:21:32Z",
       "resolved": "github:NixOS/nixpkgs/8edc0c72e3a38faf5434e40d1f19431125fe4b30#sops",
