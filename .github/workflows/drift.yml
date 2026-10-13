@@ -34,7 +34,7 @@ jobs:
     needs: stacks
     if: needs.stacks.outputs.stacks != '[]'
     runs-on: ubuntu-latest
-    # Read-only: the dev token comes from sops. No deployment record per check.
+    # Plans only: the dev token comes from sops. No deployment record per check.
     environment:
       name: proxmox-plan
       deployment: false

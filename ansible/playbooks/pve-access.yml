@@ -20,14 +20,19 @@
       # need Sys.AccessNetwork on the node (or Sys.Modify on /).
       - id: TofuDownload
         privs: Sys.AccessNetwork
+      # Plans refresh VM disks, and Proxmox only shows a VM's disk volume to
+      # users with VM.Config.Disk on that VM; no read-only privilege does.
+      - id: TofuPlan
+        privs: VM.Config.Disk
     secret_file: "{{ playbook_dir }}/../../secrets/proxmox.sops.yaml"
     # Tokens are privilege separated: each gets the same ACLs as its user.
     users:
       - id: tofu-dev@pve
         token: dev
-        comment: Read-only, for plans from a laptop
+        comment: For plans, from a laptop and pull requests
         acls:
           - { path: /, role: PVEAuditor }
+          - { path: "/pool/{{ pool }}", role: TofuPlan }
       - id: tofu-ci@pve
         token: ci
         comment: Plans and applies from CI

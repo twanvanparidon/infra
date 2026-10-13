@@ -54,7 +54,7 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.stacks != '[]'
     runs-on: ubuntu-latest
-    # Read-only: the dev token comes from sops. No deployment record per plan.
+    # Plans only: the dev token comes from sops. No deployment record per plan.
     environment:
       name: proxmox-plan
       deployment: false
