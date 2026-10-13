@@ -15,8 +15,9 @@
 crash.log
 crash.*.log
 tofu/stacks/lab-*/*.tfstate
-# Shared config is only validated, never applied.
+# Shared config and modules are only validated, never applied; stacks lock providers.
 tofu/shared/.terraform.lock.hcl
+tofu/modules/*/.terraform.lock.hcl
 
 # Packer
 packer_cache/
