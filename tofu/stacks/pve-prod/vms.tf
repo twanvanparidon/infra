@@ -20,6 +20,9 @@ module "gateway01" {
   vm_id       = 2000
   template_id = local.newest_template
   ip          = "10.0.10.26"
+  cores       = 1
+  memory      = 1024
+  disk_size   = 8
   ssh_keys    = var.ssh_keys
   tags        = ["gateway"]
 }
