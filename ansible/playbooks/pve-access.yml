@@ -32,6 +32,9 @@
         comment: For plans, from a laptop and pull requests
         acls:
           - { path: /, role: PVEAuditor }
+          # An ACL on a path replaces the roles inherited from /, so the pool
+          # needs PVEAuditor again next to TofuPlan.
+          - { path: "/pool/{{ pool }}", role: PVEAuditor }
           - { path: "/pool/{{ pool }}", role: TofuPlan }
       - id: tofu-ci@pve
         token: ci
