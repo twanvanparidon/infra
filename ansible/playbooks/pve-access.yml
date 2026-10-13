@@ -16,9 +16,10 @@
       # Download images to a storage and use them as VM disks.
       - id: TofuImages
         privs: Datastore.AllocateTemplate,Datastore.Audit
-      # The download-url API also checks Sys.Modify on the node.
+      # download-url and query-url-metadata let the node fetch URLs, so they
+      # need Sys.AccessNetwork on the node (or Sys.Modify on /).
       - id: TofuDownload
-        privs: Sys.Modify
+        privs: Sys.AccessNetwork
     secret_file: "{{ playbook_dir }}/../../secrets/proxmox.sops.yaml"
     # Tokens are privilege separated: each gets the same ACLs as its user.
     users:

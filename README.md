@@ -67,7 +67,7 @@ OpenTofu talks to Proxmox with two API tokens, both privilege separated:
 
 `task pve:access` creates the pool, roles, users, tokens and ACLs and enables `import` content on `local`, with Ansible over SSH as `root`; run `ssh-copy-id root@10.0.10.2` once first. Re-running changes nothing. A token's secret is shown only when it is created: the dev token goes into sops, the CI token is printed once. To rotate one, remove it with `pveum user token remove <user> <token>` on the host and run the task again.
 
-VMs that are not in the `tofu` pool are out of reach for CI. `TofuDownload` grants `Sys.Modify` on the node, because Proxmox's `download-url` API requires it.
+VMs that are not in the `tofu` pool are out of reach for CI. `TofuDownload` grants `Sys.AccessNetwork` on the node, because Proxmox's `download-url` API requires it.
 
 CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node and routes `10.0.10.0/24` through `tailscale0`. Jobs that use it run their container as root with `--cap-add=NET_ADMIN --device=/dev/net/tun`; userspace mode does not work, because its proxy dials subnet routes outside the tunnel. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds that part of the policy. The `tailnet` workflow checks the connection.
 
