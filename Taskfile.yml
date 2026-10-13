@@ -18,6 +18,9 @@ includes:
   pve:
     taskfile: ./.taskfiles/pve.yml
     dir: .
+  gateway:
+    taskfile: ./.taskfiles/gateway.yml
+    dir: .
   tailscale:
     taskfile: ./.taskfiles/tailscale.yml
     dir: .

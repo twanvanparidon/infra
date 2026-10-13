@@ -5,3 +5,8 @@ all:
         pve-prod:
           ansible_host: 10.0.10.2
           ansible_user: root
+    gateway:
+      hosts:
+        gateway01:
+          ansible_host: 10.0.10.26
+          ansible_user: debian
