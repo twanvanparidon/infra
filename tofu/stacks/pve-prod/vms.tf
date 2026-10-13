@@ -9,23 +9,27 @@ locals {
   newest_template = proxmox_virtual_environment_vm.debian_base[local.debian_base_versions[0]].vm_id
 }
 
-# Checks the vm module and disk growth (#45).
-module "test01" {
+# Tailscale subnet router for 10.0.10.0/24 and SSH bastion into the server
+# range. Ansible configures it: `task gateway:setup`. CI reaches the Proxmox
+# API through it, so a broken gateway can only be fixed from the LAN.
+module "gateway01" {
   source = "../../modules/vm"
 
-  name        = "test01"
+  name        = "gateway01"
   node_name   = var.node_name
   vm_id       = 2000
   template_id = local.newest_template
   ip          = "10.0.10.26"
-  disk_size   = 20
+  cores       = 1
+  memory      = 1024
+  disk_size   = 8
   ssh_keys    = var.ssh_keys
-  tags        = ["test"]
+  tags        = ["gateway"]
 }
 
 output "vms" {
   description = "SSH destination by VM name"
   value = {
-    (module.test01.name) = module.test01.ssh
+    (module.gateway01.name) = module.gateway01.ssh
   }
 }
