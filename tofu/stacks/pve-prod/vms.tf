@@ -18,7 +18,7 @@ module "test01" {
   vm_id       = 2000
   template_id = local.newest_template
   ip          = "10.0.10.26"
-  disk_size   = 16
+  disk_size   = 20
   ssh_keys    = var.ssh_keys
   tags        = ["test"]
 }
