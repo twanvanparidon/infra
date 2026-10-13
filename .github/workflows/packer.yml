@@ -82,8 +82,9 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: debian-base
-          # Where the tasks look for a build.
-          path: packer/debian-base/output-ci
+          # The artifact keeps its output-<date>/ folder, so this restores the
+          # image where the tasks look for a build.
+          path: packer/debian-base
       - uses: jetify-com/devbox-install-action@8c6a66ed6273138b1915457069de78cb52fe3bd7 # v0.15.0
         with:
           devbox-version: 0.18.4
