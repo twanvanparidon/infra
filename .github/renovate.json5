@@ -12,6 +12,19 @@
       datasourceTemplate: "docker",
       versioningTemplate: "semver",
     },
+    {
+      // debian-base releases for the pve-prod templates. The new version goes
+      // on top and the old ones stay below it; tofu keeps the first 3.
+      customType: "regex",
+      managerFilePatterns: ["/^tofu/stacks/pve-prod/templates\\.tf$/"],
+      matchStrings: ["debian_base_versions = \\[\\n\\s*\"(?<currentValue>\\d{8}(?:\\.\\d+)?)\","],
+      autoReplaceStringTemplate: "debian_base_versions = [\n    \"{{{newValue}}}\",\n    \"{{{currentValue}}}\",",
+      depNameTemplate: "debian-base",
+      packageNameTemplate: "twanvanparidon/infra",
+      datasourceTemplate: "github-releases",
+      extractVersionTemplate: "^debian-base-(?<version>\\d{8}(?:\\.\\d+)?)$",
+      versioningTemplate: "regex:^(?<major>\\d{8})(?:\\.(?<minor>\\d+))?$",
+    },
   ],
   packageRules: [
     {
