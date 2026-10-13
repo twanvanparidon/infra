@@ -1,4 +1,5 @@
-# Create the Proxmox pool, users, API tokens and ACLs that OpenTofu uses.
+# Create the Proxmox pool, roles, users, API tokens and ACLs that OpenTofu uses,
+# and let the `local` storage hold downloaded disk images (`import` content).
 # Run once from a laptop: `task pve:access`. Re-running changes nothing; a new
 # token's secret is shown only when it is created. The dev token goes into
 # secrets/proxmox.sops.yaml; the CI token is printed to store as a GitHub secret.
@@ -8,6 +9,16 @@
   vars:
     pool: tofu
     storage: local-lvm
+    # Where Proxmox downloads image releases before they become templates.
+    image_storage: local
+    # Built-in roles grant too much or too little for these.
+    custom_roles:
+      # Download images to a storage and use them as VM disks.
+      - id: TofuImages
+        privs: Datastore.AllocateTemplate,Datastore.Audit
+      # The download-url API also checks Sys.Modify on the node.
+      - id: TofuDownload
+        privs: Sys.Modify
     secret_file: "{{ playbook_dir }}/../../secrets/proxmox.sops.yaml"
     # Tokens are privilege separated: each gets the same ACLs as its user.
     users:
@@ -27,11 +38,13 @@
           # Attach VMs to the node's Linux bridges.
           - { path: /sdn/zones/localnetwork, role: PVESDNUser }
           - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: PVEAuditor }
+          - { path: "/storage/{{ image_storage }}", role: TofuImages }
+          - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: TofuDownload }
 
   tasks:
-    - name: Read pools, users and ACLs
+    - name: Read pools, users, ACLs and roles
       ansible.builtin.command: pveum {{ item }} list --output-format json
-      loop: [pool, user, acl]
+      loop: [pool, user, acl, role]
       register: current
       changed_when: false
 
@@ -40,10 +53,41 @@
         pools: "{{ current.results[0].stdout | from_json | map(attribute='poolid') }}"
         existing_users: "{{ current.results[1].stdout | from_json | map(attribute='userid') }}"
         acls: "{{ current.results[2].stdout | from_json }}"
+        existing_roles: "{{ current.results[3].stdout | from_json | items2dict(key_name='roleid', value_name='privs') }}"
 
     - name: Create the pool
       ansible.builtin.command: pveum pool add {{ pool }} --comment "Managed by OpenTofu"
       when: pool not in pools
+      changed_when: true
+
+    - name: Read the image storage
+      ansible.builtin.command: pvesh get /storage/{{ image_storage }} --output-format json
+      register: image_storage_config
+      changed_when: false
+
+    - name: Allow disk images on the image storage
+      ansible.builtin.command: pvesm set {{ image_storage }} --content {{ (content + ['import']) | join(',') }}
+      vars:
+        content: "{{ (image_storage_config.stdout | from_json).content.split(',') }}"
+      when: "'import' not in content"
+      changed_when: true
+
+    - name: Create the roles
+      ansible.builtin.command: pveum role add {{ item.id }} --privs {{ item.privs }}
+      loop: "{{ custom_roles }}"
+      loop_control:
+        label: "{{ item.id }}"
+      when: item.id not in existing_roles
+      changed_when: true
+
+    - name: Update roles whose privileges changed
+      ansible.builtin.command: pveum role modify {{ item.id }} --privs {{ item.privs }}
+      loop: "{{ custom_roles }}"
+      loop_control:
+        label: "{{ item.id }}"
+      when: >-
+        item.id in existing_roles and
+        (existing_roles[item.id].split(',') | sort) != (item.privs.split(',') | sort)
       changed_when: true
 
     - name: Create the users
