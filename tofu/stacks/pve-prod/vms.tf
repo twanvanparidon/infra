@@ -20,18 +20,8 @@ module "gateway01" {
   vm_id       = 2000
   template_id = local.newest_template
   ip          = "10.0.10.26"
-  # test01 grew to 20 GiB (#45), and disks cannot shrink.
-  disk_size = 20
-  ssh_keys  = var.ssh_keys
-  tags      = ["gateway"]
-}
-
-# gateway01 takes over test01's VM: same ID and IP, so a destroy and a create
-# would race. On the next boot cloud-init sees a new instance and sets the
-# new hostname and host keys.
-moved {
-  from = module.test01
-  to   = module.gateway01
+  ssh_keys    = var.ssh_keys
+  tags        = ["gateway"]
 }
 
 output "vms" {
