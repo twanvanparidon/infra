@@ -1,24 +1,44 @@
-// The part of the tailnet policy file that CI depends on. The full policy lives
-// in the Tailscale admin console; keep this part in sync with it.
+// The tailnet policy file. Tailscale reads it from the admin console; keep the
+// two in sync.
 {
-  // Only admins may create keys for tag:ci, e.g. through the OAuth client.
-  "tagOwners": {
-    "tag:ci": ["autogroup:admin"],
-  },
-
-  // CI reaches the Proxmox API and nothing else. The subnet router advertises
-  // 10.0.10.0/24; this grant narrows it to one port on one host.
-  "grants": [
-    {"src": ["tag:ci"], "dst": ["10.0.10.2"], "ip": ["tcp:8006"]},
-  ],
-
-  // The admin console rejects a policy where these fail, for example when an
-  // allow-all rule also matches tag:ci.
-  "tests": [
-    {
-      "src":    "tag:ci",
-      "accept": ["10.0.10.2:8006"],
-      "deny":   ["10.0.10.2:22", "10.0.10.1:443", "10.0.10.1:22"],
+    "tagOwners": {
+        "tag:ci":      ["autogroup:admin"],
+        "tag:gateway": ["autogroup:admin"],
     },
-  ],
+
+    // The gateway's subnet route is approved without a manual step.
+    "autoApprovers": {
+        "routes": {
+            "10.0.10.0/24": ["tag:gateway"],
+        },
+    },
+
+    "grants": [
+        // Devices logged in as a user may reach everything; tagged devices may not.
+        {"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]},
+        // CI reaches the Proxmox API and nothing else.
+        {"src": ["tag:ci"], "dst": ["10.0.10.2"], "ip": ["tcp:8006"]},
+    ],
+
+    "ssh": [
+        // Users may SSH into their own devices in check mode.
+        {
+            "action": "check",
+            "src":    ["autogroup:member"],
+            "dst":    ["autogroup:self"],
+            "users":  ["autogroup:nonroot", "root"],
+        },
+    ],
+
+    "tests": [
+        {
+            "src":    "tag:ci",
+            "accept": ["10.0.10.2:8006"],
+            "deny":   ["10.0.10.2:22", "10.0.10.1:443", "10.0.10.1:22"],
+        },
+        {
+            "src":    "twanvanparidon@github",
+            "accept": ["10.0.10.2:22", "10.0.10.2:8006", "10.0.10.26:22"],
+        },
+    ],
 }

@@ -1,0 +1,12 @@
+version: '3'
+
+silent: true
+
+tasks:
+  setup:
+    desc: 'Set up gateway01 as subnet router and SSH bastion; first run: `pbpaste | task gateway:setup`'
+    dir: ansible
+    cmds:
+      # The auth key comes from stdin, so it stays out of shell history. Read it
+      # here: dynamic variables get no stdin.
+      - '[ -t 0 ] || export TS_AUTHKEY="$(cat)"; ansible-playbook playbooks/gateway.yml'

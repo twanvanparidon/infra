@@ -1,0 +1,77 @@
+# Make gateway01 the Tailscale subnet router for the server range and an SSH
+# bastion into it. Run from the LAN: `task gateway:setup`. The first run needs
+# a one-time, tag:gateway auth key on stdin: `pbpaste | task gateway:setup`.
+# Tailscale keeps only its node key; the auth key is stored nowhere.
+- name: Set up the gateway
+  hosts: gateway
+  become: true
+  vars:
+    routes: 10.0.10.0/24
+    tag: tag:gateway
+    auth_key: "{{ lookup('ansible.builtin.env', 'TS_AUTHKEY') }}"
+    joined: "{{ (status.stdout | default('{}', true) | from_json).BackendState | default('') == 'Running' }}"
+
+  tasks:
+    - name: Add the Tailscale apt repository
+      ansible.builtin.deb822_repository:
+        name: tailscale
+        types: deb
+        uris: https://pkgs.tailscale.com/stable/debian
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components: main
+        signed_by: https://pkgs.tailscale.com/stable/debian/{{ ansible_facts['distribution_release'] }}.noarmor.gpg
+
+    - name: Install Tailscale and management tools
+      ansible.builtin.apt:
+        name: [tailscale, tcpdump, jq, dnsutils]
+        update_cache: true
+
+    - name: Forward IP traffic
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/90-tailscale.conf
+        content: |
+          net.ipv4.ip_forward = 1
+          net.ipv6.conf.all.forwarding = 1
+        mode: "0644"
+      notify: Reload sysctl
+
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Read the Tailscale state
+      ansible.builtin.command: tailscale status --json
+      register: status
+      changed_when: false
+      failed_when: false
+
+    - name: Need an auth key to join
+      ansible.builtin.assert:
+        that: auth_key | length > 0
+        fail_msg: Not on the tailnet yet; pipe a tag:gateway auth key in, e.g. `pbpaste | task gateway:setup`
+        quiet: true
+      when: not joined
+
+    - name: Join the tailnet
+      ansible.builtin.command:
+        cmd: >-
+          tailscale up --auth-key=file:/dev/stdin --hostname={{ inventory_hostname }}
+          --advertise-tags={{ tag }} --advertise-routes={{ routes }}
+        stdin: "{{ auth_key }}"
+      when: not joined
+      changed_when: true
+      no_log: true
+
+    - name: Read the Tailscale settings
+      ansible.builtin.command: tailscale debug prefs
+      register: prefs
+      changed_when: false
+
+    - name: Advertise the routes
+      ansible.builtin.command: tailscale set --advertise-routes={{ routes }}
+      when: (prefs.stdout | from_json).AdvertiseRoutes | default([], true) | join(',') != routes
+      changed_when: true
+
+  handlers:
+    - name: Reload sysctl
+      ansible.builtin.command: sysctl --system
+      changed_when: true
