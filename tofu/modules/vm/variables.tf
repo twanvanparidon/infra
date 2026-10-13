@@ -1,5 +1,5 @@
 variable "name" {
-  description = "VM name, also the hostname"
+  description = "VM name; cloud-init sets it as the hostname"
   type        = string
 }
 

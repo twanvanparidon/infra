@@ -15,7 +15,7 @@ module "web01" {
 }
 ```
 
-Then `ssh debian@10.0.10.30`.
+Then `ssh debian@10.0.10.30`. The VM's hostname is its `name`: Proxmox writes it into the cloud-init drive.
 
 Raise `disk_size` and reboot the VM to grow the root filesystem: tofu resizes the disk, and `growpart` grows the partition on boot. Changing `template_id` does not rebuild a VM; run `tofu apply -replace` for that.
 
@@ -23,7 +23,7 @@ Raise `disk_size` and reboot the VM to grow the root filesystem: tofu resizes th
 
 | Name | Description | Default |
 |---|---|---|
-| `name` | VM name, also the hostname | required |
+| `name` | VM name; cloud-init sets it as the hostname | required |
 | `node_name` | Proxmox node to run the VM on | required |
 | `vm_id` | VM ID, in 2000-8999 | required |
 | `template_id` | ID of the `debian-base` template to clone | required |
