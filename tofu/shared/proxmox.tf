@@ -7,6 +7,11 @@ terraform {
       source  = "bpg/proxmox"
       version = "~> 0.116.0"
     }
+    # Reads the checksums of images that Proxmox downloads.
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.6"
+    }
   }
 }
 

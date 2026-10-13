@@ -54,6 +54,8 @@ The `packer` workflow builds and tests the image on every pull request that chan
 
 The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with emulation on macOS (a few minutes on Apple silicon).
 
+`pve-prod` turns releases into templates (`tofu/stacks/pve-prod/templates.tf`): Proxmox downloads the qcow2 to `local`, checks it against `SHA256SUMS`, and imports it into a template in the `tofu` pool. Renovate adds each new release to the top of `debian_base_versions`; the first 3 get templates. A template's ID comes from its date (1000-1999), so it never changes. VMs cloned from a dropped template keep running.
+
 ## Proxmox access
 
 OpenTofu talks to Proxmox with two API tokens, both privilege separated:
