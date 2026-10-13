@@ -1,5 +1,5 @@
 # Shared by every Proxmox stack through a symlink. The API token comes from
-# PROXMOX_VE_API_TOKEN: the read-only dev token from sops locally, the CI token
+# PROXMOX_VE_API_TOKEN: the plan-only dev token from sops locally, the CI token
 # from the proxmox-apply environment on main. See .taskfiles/tofu.
 terraform {
   required_providers {

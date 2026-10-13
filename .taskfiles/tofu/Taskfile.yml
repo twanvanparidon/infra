@@ -1,7 +1,7 @@
 # Run OpenTofu on one stack under tofu/stacks (STACK=name).
 # Every task decrypts the state passphrase from secrets/tofu.sops.yaml into
 # TF_ENCRYPTION; the stack code holds the method and enforces it. The Proxmox
-# token is PROXMOX_VE_API_TOKEN when set (CI apply), else the read-only dev
+# token is PROXMOX_VE_API_TOKEN when set (CI apply), else the plan-only dev
 # token from secrets/proxmox.sops.yaml.
 # A stack with a .ci-skip file (its content says why) is left out of
 # tofu:stacks and tofu:changed, so CI does not plan, apply or check it.
