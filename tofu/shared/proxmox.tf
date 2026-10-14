@@ -12,6 +12,15 @@ terraform {
       source  = "hashicorp/http"
       version = "~> 3.6"
     }
+    # Talos clusters, and the Cilium chart that goes into their machine config.
+    talos = {
+      source  = "siderolabs/talos"
+      version = "~> 0.12.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.3.0"
+    }
   }
 }
 

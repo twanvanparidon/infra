@@ -1,0 +1,14 @@
+version: '3'
+
+silent: true
+
+tasks:
+  config:
+    desc: Write the kubeconfig and talosconfig of a cluster stack (STACK, default k8s-prod) to ~/.kube and ~/.talos
+    vars:
+      STACK: '{{.STACK | default "k8s-prod"}}'
+    cmds:
+      - mkdir -p ~/.kube ~/.talos
+      - umask 077 && task tofu:output STACK={{.STACK}} -- -raw kubeconfig > ~/.kube/{{.STACK}}
+      - umask 077 && task tofu:output STACK={{.STACK}} -- -raw talosconfig > ~/.talos/{{.STACK}}
+      - echo "export KUBECONFIG=~/.kube/{{.STACK}} TALOSCONFIG=~/.talos/{{.STACK}}"
