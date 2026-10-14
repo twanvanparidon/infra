@@ -7,7 +7,7 @@ Only CI applies changes.
 ## Requirements
 
 - [devbox](https://www.jetify.com/devbox); it installs every other tool at a pinned version (tofu, tflint, packer, ansible, sops, age, task, ...). With [direnv](https://direnv.net) the tools load when you `cd` into the repo, otherwise run `devbox shell`.
-- An age key at `~/.config/sops/age/keys.txt` that `.sops.yaml` encrypts for (see [Secrets](#secrets)).
+- An age key at `~/.config/sops/age/keys.txt` that `.sops.yaml` encrypts for (see [Secrets](docs/secrets.md)).
 
 ## Quick start
 
@@ -18,16 +18,6 @@ task         # menu of every task
 task tofu:plan STACK=test   # plan one stack under tofu/stacks
 ```
 
-## State
-
-Each stack under `tofu/stacks/` keeps its state in `terraform.tfstate` next to the code, committed to the repo. OpenTofu encrypts state and plan files with a passphrase from `secrets/tofu.sops.yaml`; the `tofu` tasks pass it in through `TF_ENCRYPTION`, and without it `tofu plan` fails.
-
-A pull request that changes a stack gets a `tofu plan` comment for it, updated on every push. After the merge, CI applies the stack and commits its state to `main`; one apply per stack runs at a time.
-
-A stack with a `.ci-skip` file (its content says why) is left out of CI plan, apply and drift.
-
-The daily `drift` workflow, also started by hand from the Actions tab, plans every stack and fails when the infrastructure no longer matches the code.
-
 ## Layout
 
 | Path | Contents |
@@ -36,78 +26,21 @@ The daily `drift` workflow, also started by hand from the Actions tab, plans eve
 | `packer/` | Golden image templates |
 | `ansible/` | Playbooks and roles |
 | `secrets/` | SOPS encrypted files |
+| `tailscale/` | A copy of the tailnet policy |
+| `docs/` | The docs below |
 | `.taskfiles/` | Task includes: `sops`, `tofu` (init and plan a stack) and the lint pipelines from [ci-runner](https://github.com/twanvanparidon/ci-runner) |
 | `.github/workflows/` | CI, every step is a `task` in a ci-runner image |
 
-## Images
+## Docs
 
-`packer/debian-base` builds the base image for VMs: the Debian 13 genericcloud image with `qemu-guest-agent`, `growpart`, unattended security upgrades and SSH hardening (keys only, no root login). It holds no users or keys; cloud-init sets those per VM.
-
-```sh
-task packer:build   # build with local QEMU into packer/debian-base/output-<date>/
-task packer:test    # boot the newest build and check it
-```
-
-`packer:test` boots the image on a throwaway overlay with a test user from cloud-init, like a clone, and checks SSH, the guest agent, the hardening and disk growth. It leaves no VM or files behind.
-
-The `packer` workflow builds and tests the image on every pull request that changes it. On `main`, and every Monday for Debian security updates, it also publishes the image as a `debian-base-<date>` GitHub release with a `SHA256SUMS` file, and deletes all but the newest 3. A second build on the same day gets `.1`, `.2`, so a release never changes. CI installs its tools with devbox, since no ci-runner image ships QEMU.
-
-The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with emulation on macOS (a few minutes on Apple silicon).
-
-`pve-prod` turns releases into templates (`tofu/stacks/pve-prod/templates.tf`): Proxmox downloads the qcow2 to `local`, checks it against `SHA256SUMS`, and imports it into a template in the `tofu` pool. Renovate adds each new release to the top of `debian_base_versions`; the first 3 get templates. A template's ID comes from its date (1000-1999), so it never changes. VMs cloned from a dropped template keep running.
-
-## Proxmox access
-
-OpenTofu talks to Proxmox with two API tokens, both privilege separated:
-
-| Token | Rights | Where |
-|---|---|---|
-| `tofu-dev@pve!dev` | `PVEAuditor` on `/`, `VM.Config.Disk` on the `tofu` pool (`TofuPlan`) | `secrets/proxmox.sops.yaml` |
-| `tofu-ci@pve!ci` | VMs in the `tofu` pool, `local-lvm`, the node's bridges; downloads images to `local` (`TofuImages`, `TofuDownload`) | The `proxmox-apply` environment secret, nowhere else |
-
-`task pve:access` creates the pool, roles, users, tokens and ACLs and enables `import` content on `local`, with Ansible over SSH as `root`; run `ssh-copy-id root@10.0.10.2` once first. Re-running changes nothing. A token's secret is shown only when it is created: the dev token goes into sops, the CI token is printed once. To rotate one, remove it with `pveum user token remove <user> <token>` on the host and run the task again.
-
-VMs that are not in the `tofu` pool are out of reach for CI. `TofuDownload` grants `Sys.AccessNetwork` on the node, because Proxmox's `download-url` API requires it. `TofuPlan` lets plans read the disks of VMs in the pool: Proxmox shows a VM's disk volume only with `VM.Config.Disk`, which also allows changing that VM's disks.
-
-CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node and routes `10.0.10.0/24` through `tailscale0`. Jobs that use it run their container as root with `--cap-add=NET_ADMIN --device=/dev/net/tun`; userspace mode does not work, because its proxy dials subnet routes outside the tunnel. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds a copy of the policy. The `tailnet` workflow checks the connection.
-
-| Environment | Branches | Secrets |
-|---|---|---|
-| `proxmox-plan` | any | `TS_OAUTH_SECRET` |
-| `proxmox-apply` | `main` | `TS_OAUTH_SECRET`, `PROXMOX_VE_API_TOKEN` |
-
-Workflow logs are public. Never print Tailscale status, `netcheck` or verbose output, or any other network details in a workflow: they can reveal the home IP. `task tailscale:up` sends all Tailscale output to `/dev/null` for this reason.
-
-## Gateway
-
-`gateway01` (`10.0.10.26`) is the tailnet's subnet router for `10.0.10.0/24` and the SSH bastion into the server range. `pve-prod` creates the VM (`tofu/stacks/pve-prod/vms.tf`); Ansible from the laptop sets it up:
-
-```sh
-pbpaste | task gateway:setup   # first run: a one-time tag:gateway auth key on stdin
-task gateway:setup             # later runs need no key
-```
-
-The playbook installs Tailscale, enables IP forwarding and joins the tailnet as `tag:gateway`; the policy approves its route. If the first run hangs after the join, press Ctrl-C and run it again: the SSH session can drop when the route moves to the tailnet.
-
-CI reaches Proxmox through the gateway, so a broken gateway can only be fixed from the LAN.
-
-## Secrets
-
-Secrets are files named `*.sops.<ext>`, encrypted with [SOPS](https://getsops.io) and [age](https://age-encryption.org) for two keys (see `.sops.yaml`):
-
-| Key | Where |
+| Page | Contents |
 |---|---|
-| Personal | `~/.config/sops/age/keys.txt` |
-| CI | The `SOPS_AGE_KEY` repo secret |
-
-```sh
-task sops:encrypt FILE=secrets/<name>.sops.yaml   # encrypt a new file in place
-sops edit secrets/<name>.sops.yaml                # change it later
-task sops:check                                   # decrypt every file with your key
-task sops:ci-key                                  # replace the CI key
-```
-
-`task leaks` scans the tree and the git history for plaintext secrets.
+| [State](docs/state.md) | Encrypted state, plans on pull requests, applies on `main`, drift |
+| [Images](docs/images.md) | The `debian-base` image and its Proxmox templates |
+| [Proxmox access](docs/proxmox.md) | API tokens, roles, and how CI reaches Proxmox over Tailscale |
+| [Gateway](docs/gateway.md) | `gateway01`: subnet router and SSH bastion |
+| [Network](docs/network.md) | Address plan and VM IDs |
+| [Secrets](docs/secrets.md) | SOPS, age keys and leak scans |
 
 ## License
 
