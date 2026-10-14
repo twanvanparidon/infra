@@ -16,3 +16,7 @@ The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with 
 ## Templates
 
 `pve-prod` turns releases into templates (`tofu/stacks/pve-prod/templates.tf`): Proxmox downloads the qcow2 to `local`, checks it against `SHA256SUMS`, and imports it into a template in the `tofu` pool. Renovate adds each new release to the top of `debian_base_versions`; the first 3 get templates. A template's ID comes from its date (see [VM IDs](network.md#vm-ids)), so it never changes. VMs cloned from a dropped template keep running.
+
+## Talos
+
+`pve-prod` also downloads the Talos image for the Kubernetes clusters (`tofu/stacks/pve-prod/talos.tf`): the nocloud qcow2 from the [image factory](https://factory.talos.dev) for a schematic with the `qemu-guest-agent` extension, to `local`. Talos VMs import their disk from it; there is no template. Renovate bumps `talos_version`, which downloads the new image and removes the old one. Running nodes upgrade with `talosctl upgrade`, not from the image.
