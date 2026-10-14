@@ -20,8 +20,9 @@ terraform {
 }
 
 locals {
-  ips      = [for name in sort(keys(var.nodes)) : var.nodes[name].ip]
-  endpoint = "https://${var.vip}:6443"
+  ips       = [for name in sort(keys(var.nodes)) : var.nodes[name].ip]
+  endpoint  = "https://${var.vip}:6443"
+  installer = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}"
 }
 
 resource "proxmox_virtual_environment_vm" "this" {
@@ -140,7 +141,7 @@ data "talos_machine_configuration" "this" {
     yamlencode({
       apiVersion = "v1alpha1"
       kind       = "UnattendedInstallConfig"
-      installer  = { image = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}" }
+      installer  = { image = local.installer }
       provisioning = {
         diskSelector = { match = "disk.dev_path == \"/dev/sda\"" }
       }
@@ -179,6 +180,10 @@ resource "talos_machine" "this" {
   node                  = each.value.ip
   client_configuration  = talos_machine_secrets.this.client_configuration
   machine_configuration = data.talos_machine_configuration.this[each.key].machine_configuration
+  # Without an image, provider 0.12 tries to upgrade a new node to "". The
+  # image matches what the node runs, so nothing is upgraded.
+  image            = local.installer
+  drain_on_upgrade = false
   # talos_cluster owns Kubernetes upgrades.
   ignore_kubernetes_upgrade_drift = true
 
