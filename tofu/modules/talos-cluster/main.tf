@@ -134,37 +134,41 @@ data "talos_machine_configuration" "this" {
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
 
+  # Talos 1.14 generates the config as separate documents; each patch
+  # changes, replaces or deletes one of them.
   config_patches = [
     yamlencode({
-      machine = {
-        install = {
-          disk  = "/dev/sda"
-          image = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}"
-        }
-        network = {
-          hostname = each.key
-          interfaces = [{
-            deviceSelector = { physical = true }
-            dhcp           = false
-            vip            = { ip = var.vip }
-          }]
-        }
-      }
-      cluster = {
-        allowSchedulingOnControlPlanes = true
-        apiServer                      = { certSANs = [var.vip] }
-        network                        = { cni = { name = "none" } }
-        proxy                          = { disabled = true }
+      apiVersion = "v1alpha1"
+      kind       = "UnattendedInstallConfig"
+      installer  = { image = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}" }
+      provisioning = {
+        diskSelector = { match = "disk.dev_path == \"/dev/sda\"" }
       }
     }),
+    yamlencode({ apiVersion = "v1alpha1", kind = "HostnameConfig", "$patch" = "delete" }),
+    yamlencode({ apiVersion = "v1alpha1", kind = "HostnameConfig", hostname = each.key }),
+    # Without the control plane taint, every node runs workloads.
+    yamlencode({ apiVersion = "v1alpha1", kind = "KubeNodeConfig", "$patch" = "delete" }),
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "KubeNodeConfig"
+      labels     = { "node-role.kubernetes.io/control-plane" = "" }
+    }),
+    yamlencode({ apiVersion = "v1alpha1", kind = "KubeFlannelCNIConfig", "$patch" = "delete" }),
+    yamlencode({ apiVersion = "v1alpha1", kind = "KubeProxyConfig", enabled = false }),
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "LinkAliasConfig"
+      name       = "lan"
+      selector   = { match = "link.driver == \"virtio_net\"" }
+    }),
+    yamlencode({ apiVersion = "v1alpha1", kind = "Layer2VIPConfig", name = var.vip, link = "lan" }),
     # Sensitive only to keep thousands of manifest lines out of every plan.
     sensitive(yamlencode({
-      cluster = {
-        inlineManifests = [{
-          name     = "cilium"
-          contents = data.helm_template.cilium.manifest
-        }]
-      }
+      apiVersion = "v1alpha1"
+      kind       = "KubeInlineManifestConfig"
+      name       = "cilium"
+      manifest   = data.helm_template.cilium.manifest
     })),
   ]
 }
