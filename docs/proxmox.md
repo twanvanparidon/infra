@@ -13,7 +13,7 @@ VMs that are not in the `tofu` pool are out of reach for CI. `TofuDownload` gran
 
 ## CI over Tailscale
 
-CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com) through the [gateway](gateway.md): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node and routes `10.0.10.0/24` through `tailscale0`. Jobs that use it run their container as root with `--cap-add=NET_ADMIN --device=/dev/net/tun`; userspace mode does not work, because its proxy dials subnet routes outside the tunnel. The tailnet policy allows `tag:ci` only `10.0.10.2:8006`; `tailscale/policy.hujson` holds a copy of the policy. The `tailnet` workflow checks the connection.
+CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](https://tailscale.com) through the [gateway](gateway.md): `task tailscale:up` joins the tailnet as an ephemeral `tag:ci` node and routes `10.0.10.0/24` through `tailscale0`. Jobs that use it run their container as root with `--cap-add=NET_ADMIN --device=/dev/net/tun`; userspace mode does not work, because its proxy dials subnet routes outside the tunnel. The tailnet policy allows `tag:ci` only the Proxmox API (`10.0.10.2:8006`) and the Talos (`50000`) and Kubernetes (`6443`) APIs of the `k8s-prod` block (see [Network](network.md)); `tailscale/policy.hujson` holds a copy of the policy. The `tailnet` workflow checks the connection.
 
 | Environment | Branches | Secrets |
 |---|---|---|

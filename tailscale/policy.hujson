@@ -16,8 +16,10 @@
     "grants": [
         // Devices logged in as a user may reach everything; tagged devices may not.
         {"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]},
-        // CI reaches the Proxmox API and nothing else.
+        // CI reaches the Proxmox API, and the Talos and Kubernetes APIs of the
+        // k8s-prod nodes (.40-49), and nothing else.
         {"src": ["tag:ci"], "dst": ["10.0.10.2"], "ip": ["tcp:8006"]},
+        {"src": ["tag:ci"], "dst": ["10.0.10.40/29", "10.0.10.48/31"], "ip": ["tcp:50000", "tcp:6443"]},
     ],
 
     "ssh": [
@@ -33,8 +35,8 @@
     "tests": [
         {
             "src":    "tag:ci",
-            "accept": ["10.0.10.2:8006"],
-            "deny":   ["10.0.10.2:22", "10.0.10.1:443", "10.0.10.1:22"],
+            "accept": ["10.0.10.2:8006", "10.0.10.40:6443", "10.0.10.41:50000", "10.0.10.49:6443"],
+            "deny":   ["10.0.10.2:22", "10.0.10.1:443", "10.0.10.1:22", "10.0.10.41:22", "10.0.10.50:6443"],
         },
         {
             "src":    "twanvanparidon@github",
