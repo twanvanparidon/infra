@@ -3,19 +3,9 @@
 # disk from it.
 locals {
   talos_version = "v1.14.2"
-}
-
-resource "talos_image_factory_schematic" "this" {
-  schematic = yamlencode({
-    customization = {
-      systemExtensions = {
-        officialExtensions = [
-          "siderolabs/nfs-utils",
-          "siderolabs/qemu-guest-agent",
-        ]
-      }
-    }
-  })
+  # ID of talos/schematic.yaml. CI cannot reach the factory, so after changing
+  # the file, run `task talos:schematic` and paste the ID here.
+  talos_schematic = "3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5"
 }
 
 resource "proxmox_download_file" "talos" {
@@ -23,8 +13,8 @@ resource "proxmox_download_file" "talos" {
   datastore_id = "local"
   content_type = "import"
   # The URL ends in nocloud-amd64.qcow2 for every version and schematic.
-  file_name = "talos-${local.talos_version}-${substr(talos_image_factory_schematic.this.id, 0, 12)}.qcow2"
-  url       = "https://factory.talos.dev/image/${talos_image_factory_schematic.this.id}/${local.talos_version}/nocloud-amd64.qcow2"
+  file_name = "talos-${local.talos_version}-${substr(local.talos_schematic, 0, 12)}.qcow2"
+  url       = "https://factory.talos.dev/image/${local.talos_schematic}/${local.talos_version}/nocloud-amd64.qcow2"
   # A factory image never changes; don't check the URL again on every plan.
   overwrite = false
 }

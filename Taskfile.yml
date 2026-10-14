@@ -24,6 +24,9 @@ includes:
   tailscale:
     taskfile: ./.taskfiles/tailscale.yml
     dir: .
+  talos:
+    taskfile: ./.taskfiles/talos.yml
+    dir: .
   # From ci-runner pipelines/<tool>/lint; CI runs the same tasks.
   tofu:lint:
     taskfile: ./.taskfiles/tofu/lint

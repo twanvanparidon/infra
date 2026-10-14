@@ -1,0 +1,5 @@
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/nfs-utils
+      - siderolabs/qemu-guest-agent
