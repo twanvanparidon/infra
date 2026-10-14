@@ -19,4 +19,4 @@ The build VM runs on the local machine, not on Proxmox: with KVM on Linux, with 
 
 ## Talos
 
-`pve-prod` also downloads the Talos image for the Kubernetes clusters (`tofu/stacks/pve-prod/talos.tf`): the nocloud qcow2 from the [image factory](https://factory.talos.dev) for a schematic with the `qemu-guest-agent` extension, to `local`. Talos VMs import their disk from it; there is no template. Renovate bumps `talos_version`, which downloads the new image and removes the old one. Running nodes upgrade with `talosctl upgrade`, not from the image.
+`pve-prod` also downloads the Talos image for the Kubernetes clusters (`tofu/stacks/pve-prod/talos.tf`): the nocloud qcow2 from the [image factory](https://factory.talos.dev) for a schematic with the `qemu-guest-agent` and `nfs-utils` extensions, to `local`. Talos VMs import their disk from it; there is no template. Renovate bumps `talos_version`, which downloads the new image and removes the old one. Running nodes upgrade with `talosctl upgrade`, not from the image.
