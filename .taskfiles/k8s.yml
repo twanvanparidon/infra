@@ -9,6 +9,9 @@ tasks:
       STACK: '{{.STACK | default "k8s-prod"}}'
     cmds:
       - mkdir -p ~/.kube ~/.talos
-      - umask 077 && task tofu:output STACK={{.STACK}} -- -raw kubeconfig > ~/.kube/{{.STACK}}
-      - umask 077 && task tofu:output STACK={{.STACK}} -- -raw talosconfig > ~/.talos/{{.STACK}}
+      # Create the files private first; writing into them keeps the mode.
+      - install -m 600 /dev/null ~/.kube/{{.STACK}}
+      - install -m 600 /dev/null ~/.talos/{{.STACK}}
+      - task tofu:output STACK={{.STACK}} -- -raw kubeconfig > ~/.kube/{{.STACK}}
+      - task tofu:output STACK={{.STACK}} -- -raw talosconfig > ~/.talos/{{.STACK}}
       - echo "export KUBECONFIG=~/.kube/{{.STACK}} TALOSCONFIG=~/.talos/{{.STACK}}"
