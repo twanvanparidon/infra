@@ -36,6 +36,15 @@ tasks:
       - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
       - tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false {{.CLI_ARGS}}
 
+  output:
+    desc: Print an output of a stack (STACK=name); extra flags after --, e.g. -- -raw kubeconfig
+    requires:
+      vars: [STACK]
+    env: *encryption
+    cmds:
+      - tofu -chdir=tofu/stacks/{{.STACK}} init -input=false > /dev/null
+      - tofu -chdir=tofu/stacks/{{.STACK}} output {{.CLI_ARGS}}
+
   apply:
     desc: tofu apply a stack without asking (STACK=name); CI runs this on main
     requires:

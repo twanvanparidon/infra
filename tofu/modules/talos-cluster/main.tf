@@ -134,32 +134,39 @@ data "talos_machine_configuration" "this" {
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
 
-  config_patches = [yamlencode({
-    machine = {
-      install = {
-        disk  = "/dev/sda"
-        image = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}"
+  config_patches = [
+    yamlencode({
+      machine = {
+        install = {
+          disk  = "/dev/sda"
+          image = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}"
+        }
+        network = {
+          hostname = each.key
+          interfaces = [{
+            deviceSelector = { physical = true }
+            dhcp           = false
+            vip            = { ip = var.vip }
+          }]
+        }
       }
-      network = {
-        hostname = each.key
-        interfaces = [{
-          deviceSelector = { physical = true }
-          dhcp           = false
-          vip            = { ip = var.vip }
+      cluster = {
+        allowSchedulingOnControlPlanes = true
+        apiServer                      = { certSANs = [var.vip] }
+        network                        = { cni = { name = "none" } }
+        proxy                          = { disabled = true }
+      }
+    }),
+    # Sensitive only to keep thousands of manifest lines out of every plan.
+    sensitive(yamlencode({
+      cluster = {
+        inlineManifests = [{
+          name     = "cilium"
+          contents = data.helm_template.cilium.manifest
         }]
       }
-    }
-    cluster = {
-      allowSchedulingOnControlPlanes = true
-      apiServer                      = { certSANs = [var.vip] }
-      network                        = { cni = { name = "none" } }
-      proxy                          = { disabled = true }
-      inlineManifests = [{
-        name     = "cilium"
-        contents = data.helm_template.cilium.manifest
-      }]
-    }
-  })]
+    })),
+  ]
 }
 
 resource "talos_machine" "this" {
