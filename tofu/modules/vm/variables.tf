@@ -47,15 +47,15 @@ variable "disk_size" {
 }
 
 variable "ip" {
-  description = "Static IPv4 address in 10.0.10.26-10.0.10.125, without a prefix"
+  description = "Static IPv4 address in 10.0.10.26-10.0.10.199, without a prefix"
   type        = string
 
   validation {
     condition = (
       can(regex("^10\\.0\\.10\\.\\d{1,3}$", var.ip)) &&
-      try(tonumber(split(".", var.ip)[3]) >= 26 && tonumber(split(".", var.ip)[3]) <= 125, false)
+      try(tonumber(split(".", var.ip)[3]) >= 26 && tonumber(split(".", var.ip)[3]) <= 199, false)
     )
-    error_message = "ip must be in 10.0.10.26-10.0.10.125, the range for tofu VMs."
+    error_message = "ip must be in 10.0.10.26-10.0.10.199, the range for tofu VMs."
   }
 }
 

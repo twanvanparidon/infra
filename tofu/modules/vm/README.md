@@ -27,7 +27,7 @@ Raise `disk_size` and reboot the VM to grow the root filesystem: tofu resizes th
 | `node_name` | Proxmox node to run the VM on | required |
 | `vm_id` | VM ID, in 2000-8999 | required |
 | `template_id` | ID of the `debian-base` template to clone | required |
-| `ip` | Static IPv4 address in 10.0.10.26-10.0.10.125, without a prefix | required |
+| `ip` | Static IPv4 address in 10.0.10.26-10.0.10.199, without a prefix | required |
 | `ssh_keys` | SSH public keys for the user, at least one | required |
 | `cores` | CPU cores | `2` |
 | `memory` | Memory in MiB | `2048` |
