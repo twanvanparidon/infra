@@ -12,6 +12,11 @@ terraform {
       source  = "hashicorp/http"
       version = "~> 3.6"
     }
+    # Builds Talos image factory schematics, and Talos clusters.
+    talos = {
+      source  = "siderolabs/talos"
+      version = "~> 0.12.0"
+    }
   }
 }
 

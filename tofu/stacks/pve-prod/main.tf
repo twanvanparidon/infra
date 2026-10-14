@@ -1,6 +1,6 @@
 # Base stack for the pve-prod node: the node and the tofu pool here, templates
-# in templates.tf, VMs in vms.tf. VMs live in the tofu pool, the only place the
-# CI token can write.
+# in templates.tf, Talos images in talos.tf, VMs in vms.tf. VMs live in the
+# tofu pool, the only place the CI token can write.
 terraform {
   backend "local" {
     path = "terraform.tfstate"

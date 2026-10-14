@@ -25,6 +25,14 @@
       extractVersionTemplate: "^debian-base-(?<version>\\d{8}(?:\\.\\d+)?)$",
       versioningTemplate: "regex:^(?<major>\\d{8})(?:\\.(?<minor>\\d+))?$",
     },
+    {
+      // The Talos version of the image factory image in pve-prod.
+      customType: "regex",
+      managerFilePatterns: ["/^tofu/stacks/pve-prod/talos\\.tf$/"],
+      matchStrings: ["talos_version = \"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""],
+      depNameTemplate: "siderolabs/talos",
+      datasourceTemplate: "github-releases",
+    },
   ],
   packageRules: [
     {
