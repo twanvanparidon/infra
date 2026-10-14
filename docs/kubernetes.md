@@ -21,5 +21,5 @@ talosctl health
 ## Upgrades
 
 - **Kubernetes:** change `kubernetes_version` in `tofu/stacks/k8s-prod/main.tf`; the apply upgrades the nodes one by one.
-- **Talos:** the stack pins its own `talos_version` and `schematic`, so a new image in `pve-prod` changes nothing here. Upgrade with `talosctl upgrade --image factory.talos.dev/nocloud-installer/<schematic>:<version>` node by node, then update the pins.
+- **Talos:** the stack pins its own `talos_version` and `schematic`, so a new image in `pve-prod` changes nothing here. Changing them upgrades every node to that installer image; for now all at once, without a drain (see #83). Don't run `talosctl upgrade` by hand: the next apply would move the node back.
 - **Cilium:** change `cilium_version`; the new manifest applies on the next apply.
