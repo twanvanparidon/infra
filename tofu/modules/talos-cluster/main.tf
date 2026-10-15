@@ -108,6 +108,10 @@ data "helm_template" "cilium" {
     kubeProxyReplacement = true
     k8sServiceHost       = "localhost"
     k8sServicePort       = 7445
+    # LoadBalancer IPs, announced over ARP; the pools live in the GitOps repo.
+    l2announcements    = { enabled = true }
+    externalIPs        = { enabled = true }
+    k8sClientRateLimit = { qps = 20, burst = 40 }
     cgroup = {
       autoMount = { enabled = false }
       hostRoot  = "/sys/fs/cgroup"
@@ -154,6 +158,13 @@ data "talos_machine_configuration" "this" {
       apiVersion = "v1alpha1"
       kind       = "KubeNodeConfig"
       labels     = { "node-role.kubernetes.io/control-plane" = "" }
+    }),
+    # Serving certificates from the cluster CA, so metrics-server can verify
+    # the kubelet. kubelet-serving-cert-approver approves them.
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "KubeletConfig"
+      config     = { serverTLSBootstrap = true }
     }),
     yamlencode({ apiVersion = "v1alpha1", kind = "KubeFlannelCNIConfig", "$patch" = "delete" }),
     yamlencode({ apiVersion = "v1alpha1", kind = "KubeProxyConfig", enabled = false }),

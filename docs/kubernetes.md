@@ -18,8 +18,26 @@ kubectl get nodes
 talosctl health
 ```
 
+## Flux
+
+Tofu installs the [Flux Operator](https://fluxcd.control-plane.io/operator/) (no web UI) and a `FluxInstance` that syncs `clusters/k8s-prod` from `main` of [gitops](https://github.com/twanvanparidon/gitops) (`tofu/stacks/k8s-prod/flux.tf`). Everything else in the cluster comes from that repo.
+
+`secrets/k8s-prod.sops.yaml` holds the keys tofu loads into `flux-system`:
+
+| Key | Secret | Use |
+|---|---|---|
+| `flux_deploy_key`, `flux_known_hosts` | `flux-system` | Read-only deploy key `flux-k8s-prod` on the gitops repo |
+| `flux_age_key` | `sops-age` | Decrypts `*.sops.yaml` in the gitops repo |
+
+```sh
+flux get kustomizations
+```
+
+To replace the deploy key, add a new key to the gitops repo with `gh repo deploy-key add`, put the private key in `flux_deploy_key`, and remove the old one after the apply.
+
 ## Upgrades
 
 - **Kubernetes:** change `kubernetes_version` in `tofu/stacks/k8s-prod/main.tf`; the apply upgrades the nodes one by one.
 - **Talos:** the stack pins its own `talos_version` and `schematic`, so a new image in `pve-prod` changes nothing here. Changing them upgrades every node to that installer image; for now all at once, without a drain (see #83). Don't run `talosctl upgrade` by hand: the next apply would move the node back.
-- **Cilium:** change `cilium_version`; the new manifest applies on the next apply.
+- **Cilium:** change `cilium_version` or its values. Talos only creates missing objects from inline manifests, so after the apply run `talosctl upgrade-k8s --to <kubernetes_version>` to sync the changed ones, then restart Cilium: `kubectl -n kube-system rollout restart ds/cilium deploy/cilium-operator`.
+- **Flux:** change the chart `version` or `distribution.version` in `flux.tf`.

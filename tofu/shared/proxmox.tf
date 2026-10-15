@@ -21,6 +21,15 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.3.0"
     }
+    # Flux on Kubernetes clusters, with its keys from sops.
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 3.3.0"
+    }
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 1.4.0"
+    }
   }
 }
 

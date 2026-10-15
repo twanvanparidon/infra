@@ -1,6 +1,6 @@
 # talos-cluster
 
-Create a [Talos](https://www.talos.dev) Kubernetes cluster on Proxmox. Every node is a control plane that also runs workloads; the Kubernetes API is on a VIP that one node holds at a time. [Cilium](https://cilium.io) is the CNI and replaces kube-proxy: it ships as an inline manifest in the machine config, so nodes come up `Ready` before anything else runs. Flux can take over the Helm release later.
+Create a [Talos](https://www.talos.dev) Kubernetes cluster on Proxmox. Every node is a control plane that also runs workloads; the Kubernetes API is on a VIP that one node holds at a time. [Cilium](https://cilium.io) is the CNI and replaces kube-proxy: it ships as an inline manifest in the machine config, so nodes come up `Ready` before anything else runs. Flux can take over the Helm release later. Cilium also hands out LoadBalancer IPs and announces them over ARP; the IP pools come from the GitOps repo. Kubelets request serving certificates from the cluster CA, which something in the cluster must approve (`kubelet-serving-cert-approver`); until then `kubectl logs` and `exec` fail.
 
 ```hcl
 module "k8s_prod" {
@@ -58,4 +58,5 @@ The machine secrets, `kubeconfig` and `talosconfig` live in the state, so keep i
 | `endpoint` | Kubernetes API URL, on the VIP |
 | `nodes` | Node IPs by hostname |
 | `kubeconfig` | Admin kubeconfig (sensitive) |
+| `client_configuration` | Kubernetes API host and base64 client certificates, for the `kubernetes` and `helm` providers (sensitive) |
 | `talosconfig` | `talosctl` config with every node as endpoint (sensitive) |

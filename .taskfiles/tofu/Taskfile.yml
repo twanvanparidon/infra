@@ -89,7 +89,8 @@ tasks:
           stacks="$(ls tofu/stacks)"
         else
           # State commits from CI are not changes to apply.
-          stacks="$(printf '%s\n' "$files" | grep -v '/terraform\.tfstate$' | sed -n 's|^tofu/stacks/\([^/]*\)/.*|\1|p' | sort -u)"
+          # secrets/<stack>.sops.yaml belongs to that stack.
+          stacks="$(printf '%s\n' "$files" | grep -v '/terraform\.tfstate$' | sed -n -e 's|^tofu/stacks/\([^/]*\)/.*|\1|p' -e 's|^secrets/\([^/]*\)\.sops\.yaml$|\1|p' | sort -u)"
         fi
         out=""
         for s in $stacks; do
