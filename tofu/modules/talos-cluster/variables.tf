@@ -79,6 +79,12 @@ variable "disk_size" {
   default     = 40
 }
 
+variable "longhorn_disk_size" {
+  description = "Size in GiB of a second disk per node that Talos mounts at /var/mnt/longhorn; 0 for none"
+  type        = number
+  default     = 0
+}
+
 variable "gateway" {
   description = "IPv4 gateway, also the DNS server"
   type        = string

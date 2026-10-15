@@ -16,7 +16,7 @@ locals {
   # it was created with until it is upgraded on purpose. pve-prod must still
   # hold this image for new nodes.
   talos_version = "v1.14.2"
-  schematic     = "3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5"
+  schematic     = "c23d16533980fd972f96a79cc22130404615c16de18f43da4a40d801d4fe8d6a"
 }
 
 module "cluster" {
@@ -40,6 +40,8 @@ module "cluster" {
   cores     = 4
   memory    = 12288
   disk_size = 64
+
+  longhorn_disk_size = 50
 }
 
 moved {

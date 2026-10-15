@@ -9,7 +9,7 @@
 | `k8s-prod-02` | `10.0.10.42` | `2042` |
 | `k8s-prod-03` | `10.0.10.43` | `2043` |
 
-Every node is a control plane that also runs workloads, with 4 cores, 12 GiB and 64 GiB of disk. [Cilium](https://cilium.io) is the CNI and replaces kube-proxy. CI applies the stack like any other and reaches the Talos (`50000`) and Kubernetes (`6443`) APIs over Tailscale (see [Network](network.md)).
+Every node is a control plane that also runs workloads, with 4 cores, 12 GiB, a 64 GiB system disk and a 50 GiB disk for [Longhorn](https://longhorn.io), mounted at `/var/mnt/longhorn`. The Talos image adds the `iscsi-tools`, `nfs-utils`, `qemu-guest-agent` and `util-linux-tools` extensions (`talos/schematic.yaml`). [Cilium](https://cilium.io) is the CNI and replaces kube-proxy. CI applies the stack like any other and reaches the Talos (`50000`) and Kubernetes (`6443`) APIs over Tailscale (see [Network](network.md)).
 
 ```sh
 task k8s:config        # write ~/.kube/k8s-prod and ~/.talos/k8s-prod from the state
