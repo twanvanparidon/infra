@@ -26,9 +26,9 @@ module "cluster" {
   node_name = var.node_name
   vip       = "10.0.10.40"
   nodes = {
-    k8s-prod-1 = { ip = "10.0.10.41", vm_id = 2041 }
-    k8s-prod-2 = { ip = "10.0.10.42", vm_id = 2042 }
-    k8s-prod-3 = { ip = "10.0.10.43", vm_id = 2043 }
+    k8s-prod-01 = { ip = "10.0.10.41", vm_id = 2041 }
+    k8s-prod-02 = { ip = "10.0.10.42", vm_id = 2042 }
+    k8s-prod-03 = { ip = "10.0.10.43", vm_id = 2043 }
   }
 
   image              = "local:import/talos-${local.talos_version}-${substr(local.schematic, 0, 12)}.qcow2"
@@ -40,6 +40,36 @@ module "cluster" {
   cores     = 4
   memory    = 12288
   disk_size = 64
+}
+
+moved {
+  from = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-1"]
+  to   = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-01"]
+}
+
+moved {
+  from = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-2"]
+  to   = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-02"]
+}
+
+moved {
+  from = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-3"]
+  to   = module.cluster.proxmox_virtual_environment_vm.this["k8s-prod-03"]
+}
+
+moved {
+  from = module.cluster.talos_machine.this["k8s-prod-1"]
+  to   = module.cluster.talos_machine.this["k8s-prod-01"]
+}
+
+moved {
+  from = module.cluster.talos_machine.this["k8s-prod-2"]
+  to   = module.cluster.talos_machine.this["k8s-prod-02"]
+}
+
+moved {
+  from = module.cluster.talos_machine.this["k8s-prod-3"]
+  to   = module.cluster.talos_machine.this["k8s-prod-03"]
 }
 
 output "endpoint" {

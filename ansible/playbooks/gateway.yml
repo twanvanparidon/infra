@@ -1,4 +1,4 @@
-# Make gateway01 the Tailscale subnet router for the server range and an SSH
+# Make gateway-01 the Tailscale subnet router for the server range and an SSH
 # bastion into it. Run from the LAN: `task gateway:setup`. The first run needs
 # a one-time, tag:gateway auth key on stdin: `pbpaste | task gateway:setup`.
 # Tailscale keeps only its node key; the auth key is stored nowhere.
@@ -65,6 +65,11 @@
       ansible.builtin.command: tailscale debug prefs
       register: prefs
       changed_when: false
+
+    - name: Name the node after the host
+      ansible.builtin.command: tailscale set --hostname={{ inventory_hostname }}
+      when: (prefs.stdout | from_json).Hostname != inventory_hostname
+      changed_when: true
 
     - name: Advertise the routes
       ansible.builtin.command: tailscale set --advertise-routes={{ routes }}

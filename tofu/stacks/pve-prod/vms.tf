@@ -12,10 +12,10 @@ locals {
 # Tailscale subnet router for 10.0.10.0/24 and SSH bastion into the server
 # range. Ansible configures it: `task gateway:setup`. CI reaches the Proxmox
 # API through it, so a broken gateway can only be fixed from the LAN.
-module "gateway01" {
+module "gateway_01" {
   source = "../../modules/vm"
 
-  name        = "gateway01"
+  name        = "gateway-01"
   node_name   = var.node_name
   vm_id       = 2000
   template_id = local.newest_template
@@ -30,6 +30,11 @@ module "gateway01" {
 output "vms" {
   description = "SSH destination by VM name"
   value = {
-    (module.gateway01.name) = module.gateway01.ssh
+    (module.gateway_01.name) = module.gateway_01.ssh
   }
+}
+
+moved {
+  from = module.gateway01
+  to   = module.gateway_01
 }

@@ -10,9 +10,9 @@ module "k8s_prod" {
   node_name = var.node_name
   vip       = "10.0.10.40"
   nodes = {
-    k8s-prod-1 = { ip = "10.0.10.41", vm_id = 2041 }
-    k8s-prod-2 = { ip = "10.0.10.42", vm_id = 2042 }
-    k8s-prod-3 = { ip = "10.0.10.43", vm_id = 2043 }
+    k8s-prod-01 = { ip = "10.0.10.41", vm_id = 2041 }
+    k8s-prod-02 = { ip = "10.0.10.42", vm_id = 2042 }
+    k8s-prod-03 = { ip = "10.0.10.43", vm_id = 2043 }
   }
 
   image              = "local:import/talos-v1.14.2-3abf06e1d81e.qcow2"

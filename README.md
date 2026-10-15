@@ -38,7 +38,7 @@ task tofu:plan STACK=test   # plan one stack under tofu/stacks
 | [State](docs/state.md) | Encrypted state, plans on pull requests, applies on `main`, drift |
 | [Images](docs/images.md) | The `debian-base` image and its Proxmox templates |
 | [Proxmox access](docs/proxmox.md) | API tokens, roles, and how CI reaches Proxmox over Tailscale |
-| [Gateway](docs/gateway.md) | `gateway01`: subnet router and SSH bastion |
+| [Gateway](docs/gateway.md) | `gateway-01`: subnet router and SSH bastion |
 | [Network](docs/network.md) | Address plan and VM IDs |
 | [Kubernetes](docs/kubernetes.md) | The `k8s-prod` Talos cluster, its configs and upgrades |
 | [Secrets](docs/secrets.md) | SOPS, age keys and leak scans |
