@@ -25,6 +25,22 @@ locals {
   installer = "factory.talos.dev/nocloud-installer/${var.schematic}:${var.talos_version}"
 }
 
+locals {
+  # The second disk, as an XFS volume at /var/mnt/longhorn.
+  longhorn_patches = var.longhorn_disk_size > 0 ? [yamlencode({
+    apiVersion = "v1alpha1"
+    kind       = "UserVolumeConfig"
+    name       = "longhorn"
+    provisioning = {
+      diskSelector = { match = "disk.dev_path == \"/dev/sdb\"" }
+      # Grows from minSize to fill the disk.
+      minSize = "1GiB"
+      grow    = true
+    }
+    filesystem = { type = "xfs" }
+  })] : []
+}
+
 resource "proxmox_virtual_environment_vm" "this" {
   for_each = var.nodes
 
@@ -63,6 +79,19 @@ resource "proxmox_virtual_environment_vm" "this" {
     iothread     = true
     discard      = "on"
     ssd          = true
+  }
+
+  dynamic "disk" {
+    for_each = var.longhorn_disk_size > 0 ? [var.longhorn_disk_size] : []
+    content {
+      datastore_id = var.datastore_id
+      interface    = "scsi1"
+      size         = disk.value
+      file_format  = "raw"
+      iothread     = true
+      discard      = "on"
+      ssd          = true
+    }
   }
 
   network_device {
@@ -141,7 +170,7 @@ data "talos_machine_configuration" "this" {
 
   # Talos 1.14 generates the config as separate documents; each patch
   # changes, replaces or deletes one of them.
-  config_patches = [
+  config_patches = concat([
     yamlencode({
       apiVersion = "v1alpha1"
       kind       = "UnattendedInstallConfig"
@@ -182,7 +211,7 @@ data "talos_machine_configuration" "this" {
       name       = "cilium"
       manifest   = data.helm_template.cilium.manifest
     })),
-  ]
+  ], local.longhorn_patches)
 }
 
 resource "talos_machine" "this" {

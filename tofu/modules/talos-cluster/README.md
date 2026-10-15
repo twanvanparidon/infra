@@ -15,8 +15,8 @@ module "k8s_prod" {
     k8s-prod-03 = { ip = "10.0.10.43", vm_id = 2043 }
   }
 
-  image              = "local:import/talos-v1.14.2-3abf06e1d81e.qcow2"
-  schematic          = "3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5"
+  image              = "local:import/talos-v1.14.2-c23d16533980.qcow2"
+  schematic          = "c23d16533980fd972f96a79cc22130404615c16de18f43da4a40d801d4fe8d6a"
   talos_version      = "v1.14.2"
   kubernetes_version = "v1.37.1"
   cilium_version     = "1.20.2"
@@ -45,6 +45,7 @@ The machine secrets, `kubeconfig` and `talosconfig` live in the state, so keep i
 | `cores` | CPU cores per node | `4` |
 | `memory` | Memory per node in MiB | `8192` |
 | `disk_size` | Disk size per node in GiB | `40` |
+| `longhorn_disk_size` | Second disk per node in GiB, mounted at `/var/mnt/longhorn`; `0` for none | `0` |
 | `gateway` | IPv4 gateway, also the DNS server | `10.0.10.1` |
 | `tags` | Extra Proxmox tags; `tofu`, `talos` and the name are always added | `[]` |
 | `pool_id` | Proxmox pool | `tofu` |

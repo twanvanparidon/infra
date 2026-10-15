@@ -5,7 +5,7 @@ locals {
   talos_version = "v1.14.2"
   # ID of talos/schematic.yaml. CI cannot reach the factory, so after changing
   # the file, run `task talos:schematic` and paste the ID here.
-  talos_schematic = "3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5"
+  talos_schematic = "c23d16533980fd972f96a79cc22130404615c16de18f43da4a40d801d4fe8d6a"
 }
 
 resource "proxmox_download_file" "talos" {
