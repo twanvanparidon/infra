@@ -1,5 +1,5 @@
 # Talos images from the image factory, for the Kubernetes clusters. Proxmox
-# downloads the qcow2 to `local` as `import` content; Talos VMs import their
+# downloads the qcow2 to `images` as `import` content; Talos VMs import their
 # disk from it.
 locals {
   talos_version = "v1.14.2"
@@ -8,9 +8,9 @@ locals {
   talos_schematic = "c23d16533980fd972f96a79cc22130404615c16de18f43da4a40d801d4fe8d6a"
 }
 
-resource "proxmox_download_file" "talos" {
+resource "proxmox_download_file" "talos_image" {
   node_name    = var.node_name
-  datastore_id = "local"
+  datastore_id = "images"
   content_type = "import"
   # The URL ends in nocloud-amd64.qcow2 for every version and schematic.
   file_name = "talos-${local.talos_version}-${substr(local.talos_schematic, 0, 12)}.qcow2"
@@ -19,7 +19,17 @@ resource "proxmox_download_file" "talos" {
   overwrite = false
 }
 
+# The image that lived on `local`, where tofu may not delete files; delete it
+# there by hand.
+removed {
+  from = proxmox_download_file.talos
+
+  lifecycle {
+    destroy = false
+  }
+}
+
 output "talos_image" {
   description = "Volume ID of the Talos image, for import_from"
-  value       = proxmox_download_file.talos.id
+  value       = proxmox_download_file.talos_image.id
 }

@@ -31,7 +31,7 @@ module "cluster" {
     k8s-prod-03 = { ip = "10.0.10.43", vm_id = 2043 }
   }
 
-  image              = "local:import/talos-${local.talos_version}-${substr(local.schematic, 0, 12)}.qcow2"
+  image              = "images:import/talos-${local.talos_version}-${substr(local.schematic, 0, 12)}.qcow2"
   schematic          = local.schematic
   talos_version      = local.talos_version
   kubernetes_version = "v1.37.1"
