@@ -1,6 +1,6 @@
 # Gateway
 
-`gateway01` (`10.0.10.26`) is the tailnet's subnet router for `10.0.10.0/24` and the SSH bastion into the server range. `pve-prod` creates the VM (`tofu/stacks/pve-prod/vms.tf`); Ansible from the laptop sets it up:
+`gateway-01` (`10.0.10.26`) is the tailnet's subnet router for `10.0.10.0/24` and the SSH bastion into the server range. `pve-prod` creates the VM (`tofu/stacks/pve-prod/vms.tf`); Ansible from the laptop sets it up:
 
 ```sh
 pbpaste | task gateway:setup   # first run: a one-time tag:gateway auth key on stdin

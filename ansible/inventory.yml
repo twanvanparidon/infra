@@ -7,6 +7,6 @@ all:
           ansible_user: root
     gateway:
       hosts:
-        gateway01:
+        gateway-01:
           ansible_host: 10.0.10.26
           ansible_user: debian

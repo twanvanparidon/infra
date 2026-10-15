@@ -5,9 +5,9 @@
 | Node | IP | VM ID |
 |---|---|---|
 | API VIP | `10.0.10.40` | |
-| `k8s-prod-1` | `10.0.10.41` | `2041` |
-| `k8s-prod-2` | `10.0.10.42` | `2042` |
-| `k8s-prod-3` | `10.0.10.43` | `2043` |
+| `k8s-prod-01` | `10.0.10.41` | `2041` |
+| `k8s-prod-02` | `10.0.10.42` | `2042` |
+| `k8s-prod-03` | `10.0.10.43` | `2043` |
 
 Every node is a control plane that also runs workloads, with 4 cores, 12 GiB and 64 GiB of disk. [Cilium](https://cilium.io) is the CNI and replaces kube-proxy. CI applies the stack like any other and reaches the Talos (`50000`) and Kubernetes (`6443`) APIs over Tailscale (see [Network](network.md)).
 
