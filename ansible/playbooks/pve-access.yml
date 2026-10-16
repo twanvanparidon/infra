@@ -1,5 +1,6 @@
 # Create the Proxmox pool, roles, users, API tokens and ACLs that OpenTofu uses,
-# and let the `local` storage hold downloaded disk images (`import` content).
+# let the `local` storage hold downloaded disk images (`import` content), and
+# create the `images` storage, where tofu may also delete the images it downloaded.
 # Run once from a laptop: `task pve:access`. Re-running changes nothing; a new
 # token's secret is shown only when it is created. The dev token goes into
 # secrets/proxmox.sops.yaml; the CI token is printed to store as a GitHub secret.
@@ -11,11 +12,17 @@
     storage: local-lvm
     # Where Proxmox downloads image releases before they become templates.
     image_storage: local
+    # Talos images; tofu replaces them on every version or schematic change.
+    managed_image_storage: images
+    managed_image_path: /var/lib/images
     # Built-in roles grant too much or too little for these.
     custom_roles:
       # Download images to a storage and use them as VM disks.
       - id: TofuImages
         privs: Datastore.AllocateTemplate,Datastore.Audit
+      # The same, plus deleting them again; only on the images storage.
+      - id: TofuManagedImages
+        privs: Datastore.Allocate,Datastore.AllocateTemplate,Datastore.Audit
       # download-url and query-url-metadata let the node fetch URLs, so they
       # need Sys.AccessNetwork on the node (or Sys.Modify on /).
       - id: TofuDownload
@@ -48,6 +55,7 @@
           - { path: /sdn/zones/localnetwork, role: PVESDNUser }
           - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: PVEAuditor }
           - { path: "/storage/{{ image_storage }}", role: TofuImages }
+          - { path: "/storage/{{ managed_image_storage }}", role: TofuManagedImages }
           - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: TofuDownload }
 
   tasks:
@@ -79,6 +87,18 @@
       vars:
         content: "{{ (image_storage_config.stdout | from_json).content.split(',') }}"
       when: "'import' not in content"
+      changed_when: true
+
+    - name: Read the storages
+      ansible.builtin.command: pvesh get /storage --output-format json
+      register: storages
+      changed_when: false
+
+    - name: Create the managed image storage
+      ansible.builtin.command: >-
+        pvesm add dir {{ managed_image_storage }} --path {{ managed_image_path }}
+        --content import --mkdir 1
+      when: managed_image_storage not in (storages.stdout | from_json | map(attribute='storage'))
       changed_when: true
 
     - name: Create the roles

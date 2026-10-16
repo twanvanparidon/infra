@@ -15,7 +15,7 @@ module "k8s_prod" {
     k8s-prod-03 = { ip = "10.0.10.43", vm_id = 2043 }
   }
 
-  image              = "local:import/talos-v1.14.2-c23d16533980.qcow2"
+  image              = "images:import/talos-v1.14.2-c23d16533980.qcow2"
   schematic          = "c23d16533980fd972f96a79cc22130404615c16de18f43da4a40d801d4fe8d6a"
   talos_version      = "v1.14.2"
   kubernetes_version = "v1.37.1"
