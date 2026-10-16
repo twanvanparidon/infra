@@ -37,7 +37,18 @@ To replace the deploy key, add a new key to the gitops repo with `gh repo deploy
 
 ## Upgrades
 
+Applies run one resource at a time, so Talos changes reach the nodes one by one.
+
 - **Kubernetes:** change `kubernetes_version` in `tofu/stacks/k8s-prod/main.tf`; the apply upgrades the nodes one by one.
-- **Talos:** the stack pins its own `talos_version` and `schematic`, so a new image in `pve-prod` changes nothing here. Changing them upgrades every node to that installer image; for now all at once, without a drain (see #83). Don't run `talosctl upgrade` by hand: the next apply would move the node back.
+- **Talos:** the stack pins its own `talos_version` and `schematic`, so a new image in `pve-prod` changes nothing here. Changing them upgrades the nodes to that installer image, one by one. Don't run `talosctl upgrade` by hand: the next apply would move the node back.
+- **Config:** a machine config change applies to one node after the other; most changes need no reboot.
+- **Hardware:** a change to `cores` or `memory` does not reboot the VMs; the apply warns that a reboot is pending. Reboot each node in turn and wait for it to be `Ready` before the next:
+
+  ```sh
+  kubectl drain k8s-prod-01 --ignore-daemonsets --delete-emptydir-data
+  talosctl -n 10.0.10.41 reboot
+  kubectl uncordon k8s-prod-01
+  ```
+
 - **Cilium:** change `cilium_version` or its values. Talos only creates missing objects from inline manifests, so after the apply run `talosctl upgrade-k8s --to <kubernetes_version>` to sync the changed ones, then restart Cilium: `kubectl -n kube-system rollout restart ds/cilium deploy/cilium-operator`.
 - **Flux:** change the chart `version` or `distribution.version` in `flux.tf`.

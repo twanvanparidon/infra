@@ -25,7 +25,7 @@ module "k8s_prod" {
 
 Each VM imports its disk from the Talos nocloud image and gets its static IP from the Proxmox cloud-init drive. Tofu then applies the machine configs over the Talos API (`50000`) and bootstraps etcd on the first node by name, so the machine running tofu must reach the nodes.
 
-Changing `kubernetes_version` upgrades Kubernetes in place. Changing `talos_version` or `schematic` upgrades every node to the matching installer image, all at once and without a drain. A new `image` does not rebuild running nodes.
+Changing `kubernetes_version` upgrades Kubernetes in place. Changing `talos_version` or `schematic` upgrades every node to the matching installer image; apply with `-parallelism=1` to do that one node at a time. A change to `cores` or `memory` waits for a manual reboot. A new `image` does not rebuild running nodes.
 
 The machine secrets, `kubeconfig` and `talosconfig` live in the state, so keep it encrypted.
 

@@ -115,6 +115,10 @@ resource "proxmox_virtual_environment_vm" "this" {
     }
   }
 
+  # A change to cores or memory waits for a manual reboot, one node at a
+  # time; rebooting all at once loses etcd quorum.
+  reboot_after_update = false
+
   lifecycle {
     # A new Talos image must not rebuild a running node; nodes upgrade with
     # `talosctl upgrade`.
@@ -141,6 +145,9 @@ data "helm_template" "cilium" {
     l2announcements    = { enabled = true }
     externalIPs        = { enabled = true }
     k8sClientRateLimit = { qps = 20, burst = 40 }
+    # A Job makes the Hubble certificates in the cluster; Helm would render
+    # new ones every plan and change the machine config each time.
+    hubble = { tls = { auto = { method = "cronJob" } } }
     cgroup = {
       autoMount = { enabled = false }
       hostRoot  = "/sys/fs/cgroup"
