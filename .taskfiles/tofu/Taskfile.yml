@@ -59,7 +59,8 @@ tasks:
         tofu -chdir=tofu/stacks/{{.STACK}} plan -input=false -detailed-exitcode -out=apply.tfplan || rc=$?
         case "$rc" in
           0) echo "no changes, nothing to apply" ;;
-          2) tofu -chdir=tofu/stacks/{{.STACK}} apply -input=false apply.tfplan ;;
+          # One resource at a time, so cluster nodes change one by one.
+          2) tofu -chdir=tofu/stacks/{{.STACK}} apply -input=false -parallelism=1 apply.tfplan ;;
           *) exit "$rc" ;;
         esac
         rm -f tofu/stacks/{{.STACK}}/apply.tfplan
