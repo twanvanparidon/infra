@@ -1,5 +1,5 @@
 # VM templates from the debian-base releases that CI publishes (see packer/).
-# Proxmox downloads each qcow2 to `local` as `import` content, checks it against
+# Proxmox downloads each qcow2 to `images` as `import` content, checks it against
 # the release's SHA256SUMS, and imports it into a template on `local-lvm`.
 locals {
   # Newest first. Renovate puts each new release at the top; only the first 3
@@ -26,11 +26,11 @@ data "http" "debian_base_sums" {
   url = "${local.release_url}/debian-base-${each.key}/SHA256SUMS"
 }
 
-resource "proxmox_download_file" "debian_base" {
+resource "proxmox_download_file" "debian_base_image" {
   for_each = local.debian_base
 
   node_name    = var.node_name
-  datastore_id = "local"
+  datastore_id = "images"
   content_type = "import"
   url          = "${local.release_url}/debian-base-${each.key}/debian-base-${each.key}.qcow2"
   # Releases are pruned after a while; the checksum only matters for the
@@ -42,6 +42,16 @@ resource "proxmox_download_file" "debian_base" {
 
   lifecycle {
     ignore_changes = [checksum]
+  }
+}
+
+# The images that lived on `local`, where tofu may not delete files; delete
+# them there by hand.
+removed {
+  from = proxmox_download_file.debian_base
+
+  lifecycle {
+    destroy = false
   }
 }
 
@@ -81,7 +91,7 @@ resource "proxmox_virtual_environment_vm" "debian_base" {
 
   disk {
     datastore_id = "local-lvm"
-    import_from  = proxmox_download_file.debian_base[each.key].id
+    import_from  = proxmox_download_file.debian_base_image[each.key].id
     interface    = "scsi0"
     iothread     = true
     discard      = "on"
