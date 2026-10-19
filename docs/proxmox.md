@@ -21,3 +21,17 @@ CI runs on GitHub-hosted runners and reaches the Proxmox API over [Tailscale](ht
 | `proxmox-apply` | `main` | `TS_OAUTH_SECRET`, `PROXMOX_VE_API_TOKEN` |
 
 Workflow logs are public. Never print Tailscale status, `netcheck` or verbose output, or any other network details in a workflow: they can reveal the home IP. `task tailscale:up` sends all Tailscale output to `/dev/null` for this reason.
+
+## VM IDs
+
+A tofu VM's ID is 2000 plus the last octet of its IP (see [Network](network.md)): `.41` gets `2041`. `gateway-01` keeps `2000`.
+
+| Range | Use |
+|---|---|
+| `1000-1999` | Templates; the ID comes from the image date |
+| `2000` | `gateway-01` |
+| `2026-2039` | Shared services |
+| `2041-2049` | `k8s-prod` nodes |
+| `2060-2079` | CKA labs |
+| `2080-2199` | Free for tofu VMs |
+| `2200-8999` | Reserved for tofu VMs |
