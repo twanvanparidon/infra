@@ -11,10 +11,6 @@ terraform {
   }
 }
 
-locals {
-  dns = var.dns != null ? var.dns : (var.gateway == null ? [] : [var.gateway])
-}
-
 resource "proxmox_virtual_environment_vm" "this" {
   name      = var.name
   node_name = var.node_name
@@ -84,9 +80,9 @@ resource "proxmox_virtual_environment_vm" "this" {
     }
 
     dynamic "dns" {
-      for_each = length(local.dns) == 0 ? [] : [local.dns]
+      for_each = var.gateway == null ? [] : [var.gateway]
       content {
-        servers = dns.value
+        servers = [dns.value]
       }
     }
 
