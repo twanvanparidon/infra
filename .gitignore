@@ -7,14 +7,13 @@
 *.agekey
 
 # OpenTofu
-# State of CI stacks is committed (encrypted); only local lab state stays out.
+# State is committed (encrypted).
 .terraform/
 *.tfplan
 *.tfstate.backup
 .terraform.tfstate.lock.info
 crash.log
 crash.*.log
-tofu/stacks/lab-*/*.tfstate
 # Shared config and modules are only validated, never applied; stacks lock providers.
 tofu/shared/.terraform.lock.hcl
 tofu/modules/*/.terraform.lock.hcl
