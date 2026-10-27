@@ -47,22 +47,36 @@ variable "disk_size" {
 }
 
 variable "ip" {
-  description = "Static IPv4 address in 10.0.10.26-10.0.10.199, without a prefix"
+  description = "Static IPv4 address of the first NIC, without a prefix; in 10.0.10.26-10.0.10.199 when on 10.0.10.0/24"
   type        = string
 
   validation {
     condition = (
-      can(regex("^10\\.0\\.10\\.\\d{1,3}$", var.ip)) &&
-      try(tonumber(split(".", var.ip)[3]) >= 26 && tonumber(split(".", var.ip)[3]) <= 199, false)
+      can(cidrhost("${var.ip}/32", 0)) &&
+      (!startswith(var.ip, "10.0.10.") || try(tonumber(split(".", var.ip)[3]) >= 26 && tonumber(split(".", var.ip)[3]) <= 199, false))
     )
-    error_message = "ip must be in 10.0.10.26-10.0.10.199, the range for tofu VMs."
+    error_message = "ip must be an IPv4 address, in 10.0.10.26-10.0.10.199 when on 10.0.10.0/24."
   }
 }
 
 variable "gateway" {
-  description = "IPv4 gateway, also the DNS server"
+  description = "IPv4 gateway of the first NIC, also the DNS server; null for a network with no way out"
   type        = string
   default     = "10.0.10.1"
+}
+
+variable "extra_networks" {
+  description = "More NICs after the first, each a bridge and a static IPv4 address in a /24, without a gateway"
+  type = list(object({
+    bridge = string
+    ip     = string
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for n in var.extra_networks : can(cidrhost("${n.ip}/32", 0))])
+    error_message = "Every extra_networks ip must be an IPv4 address."
+  }
 }
 
 variable "username" {
@@ -94,7 +108,7 @@ variable "pool_id" {
 }
 
 variable "bridge" {
-  description = "Linux bridge for the network device"
+  description = "Bridge or SDN VNet for the first NIC"
   type        = string
   default     = "vmbr0"
 }
