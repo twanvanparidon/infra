@@ -5,11 +5,11 @@ OpenTofu talks to Proxmox with two API tokens, both privilege separated:
 | Token | Rights | Where |
 |---|---|---|
 | `tofu-dev@pve!dev` | `PVEAuditor` on `/`, `VM.Config.Disk` on the `tofu` pool (`TofuPlan`) | `secrets/proxmox.sops.yaml` |
-| `tofu-ci@pve!ci` | VMs in the `tofu` pool, `local-lvm`, the node's bridges; downloads images to `local` (`TofuImages`, `TofuDownload`) and manages them on `images` (`TofuManagedImages`) | The `proxmox-apply` environment secret, nowhere else |
+| `tofu-ci@pve!ci` | VMs in the `tofu` pool, `local-lvm`, the node's bridges, SDN (`PVESDNAdmin`); downloads images to `local` (`TofuImages`, `TofuDownload`) and manages them on `images` (`TofuManagedImages`) | The `proxmox-apply` environment secret, nowhere else |
 
-`task pve:access` creates the pool, roles, users, tokens and ACLs enables `import` content on `local`, and creates the `images` storage, with Ansible over SSH as `root`; run `ssh-copy-id root@10.0.10.2` once first. Re-running changes nothing. A token's secret is shown only when it is created: the dev token goes into sops, the CI token is printed once. To rotate one, remove it with `pveum user token remove <user> <token>` on the host and run the task again.
+`task pve:access` creates the pool, roles, users, tokens and ACLs enables `import` content on `local`, creates the `images` storage and the `labs` SDN zone, with Ansible over SSH as `root`; run `ssh-copy-id root@10.0.10.2` once first. Re-running changes nothing. A token's secret is shown only when it is created: the dev token goes into sops, the CI token is printed once. To rotate one, remove it with `pveum user token remove <user> <token>` on the host and run the task again.
 
-VMs that are not in the `tofu` pool are out of reach for CI. `TofuDownload` grants `Sys.AccessNetwork` on the node, because Proxmox's `download-url` API requires it. `TofuPlan` lets plans read the disks of VMs in the pool: Proxmox shows a VM's disk volume only with `VM.Config.Disk`, which also allows changing that VM's disks.
+VMs that are not in the `tofu` pool are out of reach for CI. Labs create their own networks as VNets in the `labs` zone (see [Labs](labs.md)); Proxmox applies SDN changes only with `SDN.Allocate` on `/sdn`, so CI holds `PVESDNAdmin` there. The zone itself comes from Ansible, because tofu reads a zone only with `SDN.Allocate`, which the plan token lacks. `TofuDownload` grants `Sys.AccessNetwork` on the node, because Proxmox's `download-url` API requires it. `TofuPlan` lets plans read the disks of VMs in the pool: Proxmox shows a VM's disk volume only with `VM.Config.Disk`, which also allows changing that VM's disks.
 
 ## CI over Tailscale
 

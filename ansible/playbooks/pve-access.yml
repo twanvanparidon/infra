@@ -1,6 +1,7 @@
 # Create the Proxmox pool, roles, users, API tokens and ACLs that OpenTofu uses,
 # let the `local` storage hold downloaded disk images (`import` content), and
-# create the `images` storage, where tofu may also delete the images it downloaded.
+# create the `images` storage, where tofu may also delete the images it downloaded,
+# and the SDN zone that holds the labs' own networks.
 # Run once from a laptop: `task pve:access`. Re-running changes nothing; a new
 # token's secret is shown only when it is created. The dev token goes into
 # secrets/proxmox.sops.yaml; the CI token is printed to store as a GitHub secret.
@@ -15,6 +16,10 @@
     # Talos images; tofu replaces them on every version or schematic change.
     managed_image_storage: images
     managed_image_path: /var/lib/images
+    # A simple zone: VNets in it are bridges without an uplink. Tofu reads a
+    # zone only with SDN.Allocate, so the zone lives here and stacks create
+    # VNets, which plans can read with SDN.Audit.
+    lab_zone: labs
     # Built-in roles grant too much or too little for these.
     custom_roles:
       # Download images to a storage and use them as VM disks.
@@ -53,6 +58,8 @@
           - { path: "/storage/{{ storage }}", role: PVEDatastoreUser }
           # Attach VMs to the node's Linux bridges.
           - { path: /sdn/zones/localnetwork, role: PVESDNUser }
+          # Lab VNets; applying any SDN change needs SDN.Allocate on /sdn.
+          - { path: /sdn, role: PVESDNAdmin }
           - { path: "/nodes/{{ ansible_facts['hostname'] }}", role: PVEAuditor }
           - { path: "/storage/{{ image_storage }}", role: TofuImages }
           - { path: "/storage/{{ managed_image_storage }}", role: TofuManagedImages }
@@ -99,6 +106,16 @@
         pvesm add dir {{ managed_image_storage }} --path {{ managed_image_path }}
         --content import --mkdir 1
       when: managed_image_storage not in (storages.stdout | from_json | map(attribute='storage'))
+      changed_when: true
+
+    - name: Read the SDN zones
+      ansible.builtin.command: pvesh get /cluster/sdn/zones --output-format json
+      register: zones
+      changed_when: false
+
+    - name: Create and apply the lab zone
+      ansible.builtin.shell: pvesh create /cluster/sdn/zones --type simple --zone {{ lab_zone }} && pvesh set /cluster/sdn
+      when: lab_zone not in (zones.stdout | from_json | map(attribute='zone'))
       changed_when: true
 
     - name: Create the roles
