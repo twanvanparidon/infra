@@ -119,14 +119,15 @@ module "gapped" {
   bridge      = local.vnet
   ip          = each.value
   # k3s needs a default route to pick its node IP. No host has this address,
-  # so nothing still leaves the VNet. As the DNS server too, it keeps Proxmox
-  # from giving the nodes its own nameserver and search domain.
-  gateway   = cidrhost(var.subnet, 1)
-  cores     = 4
-  memory    = 4096
-  disk_size = 32
-  ssh_keys  = var.ssh_keys
-  tags      = ["lab", "zarf"]
+  # so nothing still leaves the VNet.
+  gateway = cidrhost(var.subnet, 1)
+  # lab-zarf runs dnsmasq on each node's own IP
+  dns_servers = [each.value]
+  cores       = 4
+  memory      = 4096
+  disk_size   = 32
+  ssh_keys    = var.ssh_keys
+  tags        = ["lab", "zarf"]
 
   depends_on = [proxmox_sdn_applier.gapped]
 }
