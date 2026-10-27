@@ -41,6 +41,7 @@ task tofu:plan STACK=test   # plan one stack under tofu/stacks
 | [Gateway](docs/gateway.md) | `gateway-01`: subnet router and SSH bastion |
 | [Network](docs/network.md) | Address plan and VM names |
 | [Kubernetes](docs/kubernetes.md) | The `k8s-prod` Talos cluster, its configs and upgrades |
+| [Labs](docs/labs.md) | Throwaway lab stacks that a pull request switches on and off |
 | [Secrets](docs/secrets.md) | SOPS, age keys and leak scans |
 
 ## License

@@ -9,7 +9,7 @@ All hosts live in `10.0.10.0/24`; the [gateway](gateway.md) routes it into the t
 | `.1-25` | Management (router `.1`, `pve01` `.2`) |
 | `.26-39` | Shared services (`gateway-01` `.26`) |
 | `.40-59` | `k8s-prod`: `.40` API VIP, `.41-49` nodes, `.50-59` LoadBalancer IPs |
-| `.60-79` | CKA labs |
+| `.60-79` | [Labs](labs.md); each lab sets its own IPs |
 | `.80-199` | Free for tofu VMs |
 | `.200-254` | DHCP |
 
