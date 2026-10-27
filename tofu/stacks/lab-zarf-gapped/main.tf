@@ -119,9 +119,9 @@ module "gapped" {
   bridge      = local.vnet
   ip          = each.value
   # k3s needs a default route to pick its node IP. No host has this address,
-  # so nothing still leaves the VNet.
+  # so nothing still leaves the VNet. As the DNS server too, it keeps Proxmox
+  # from giving the nodes its own nameserver and search domain.
   gateway   = cidrhost(var.subnet, 1)
-  dns       = []
   cores     = 4
   memory    = 4096
   disk_size = 32
