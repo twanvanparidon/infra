@@ -39,6 +39,7 @@ Raise `disk_size` and reboot the VM to grow the root filesystem: tofu resizes th
 | `memory` | Memory in MiB | `2048` |
 | `disk_size` | Root disk size in GiB, at least 8 | `16` |
 | `gateway` | IPv4 gateway of the first NIC, also the DNS server; `null` for a network with no way out | `10.0.10.1` |
+| `dns_servers` | DNS servers; `null` uses the gateway | `null` |
 | `extra_networks` | More NICs, each `{ bridge, ip }` in a /24, without a gateway | `[]` |
 | `username` | User that cloud-init creates, with sudo | `debian` |
 | `tags` | Proxmox tags; `tofu` is always added | `[]` |

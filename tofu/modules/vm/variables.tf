@@ -65,6 +65,12 @@ variable "gateway" {
   default     = "10.0.10.1"
 }
 
+variable "dns_servers" {
+  description = "DNS servers; null uses the gateway"
+  type        = list(string)
+  default     = null
+}
+
 variable "extra_networks" {
   description = "More NICs after the first, each a bridge and a static IPv4 address in a /24, without a gateway"
   type = list(object({

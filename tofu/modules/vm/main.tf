@@ -80,9 +80,9 @@ resource "proxmox_virtual_environment_vm" "this" {
     }
 
     dynamic "dns" {
-      for_each = var.gateway == null ? [] : [var.gateway]
+      for_each = var.gateway == null ? [] : [coalesce(var.dns_servers, [var.gateway])]
       content {
-        servers = [dns.value]
+        servers = dns.value
       }
     }
 
