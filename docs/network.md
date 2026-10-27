@@ -19,11 +19,4 @@ Tofu VMs get a static address through cloud-init; `tofu/modules/vm` rejects an `
 
 A VM is named `<role>-<nn>`: lowercase, with a two-digit number. Cluster nodes use the cluster name as the role (`k8s-prod-01`). Templates are named `<image>-<date>`. The VM name is also the hostname and the Tailscale node name.
 
-## VM IDs
-
-| Range | Use |
-|---|---|
-| `1000-1999` | Templates; the ID comes from the image date |
-| `2000-8999` | Tofu VMs |
-
-A new VM's ID is 2000 plus the last octet of its IP: `.41` gets `2041`. `gateway-01` keeps `2000`.
+VM IDs follow the address plan; see [Proxmox VM IDs](proxmox.md#vm-ids).
