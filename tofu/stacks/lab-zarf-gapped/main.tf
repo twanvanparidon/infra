@@ -118,12 +118,15 @@ module "gapped" {
   template_id = local.newest_template
   bridge      = local.vnet
   ip          = each.value
-  gateway     = null
-  cores       = 4
-  memory      = 4096
-  disk_size   = 32
-  ssh_keys    = var.ssh_keys
-  tags        = ["lab", "zarf"]
+  # k3s needs a default route to pick its node IP. No host has this address,
+  # so nothing still leaves the VNet.
+  gateway   = cidrhost(var.subnet, 1)
+  dns       = []
+  cores     = 4
+  memory    = 4096
+  disk_size = 32
+  ssh_keys  = var.ssh_keys
+  tags      = ["lab", "zarf"]
 
   depends_on = [proxmox_sdn_applier.gapped]
 }
