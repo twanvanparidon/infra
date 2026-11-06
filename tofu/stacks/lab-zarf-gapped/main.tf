@@ -1,4 +1,4 @@
-# Gapped Zarf lab: a hub (Gitea from Zarf) and an edge on a VNet with no route
+# Gapped Zarf lab: a hub (Gitea from Zarf) and two edges on a VNet with no route
 # out, sized like Raspberry Pis. The jump host sits on both networks without
 # forwarding and is the only way in. See docs/labs.md.
 terraform {
@@ -28,6 +28,8 @@ variable "octets" {
     jump = number
     hub  = number
     edge = number
+    # Second edge, a Syncthing peer for the first
+    edge_02 = number
   })
 }
 
@@ -46,6 +48,7 @@ locals {
   gapped = {
     zarf-hub-01  = cidrhost(var.subnet, var.octets.hub)
     zarf-edge-01 = cidrhost(var.subnet, var.octets.edge)
+    zarf-edge-02 = cidrhost(var.subnet, var.octets.edge_02)
   }
 }
 
